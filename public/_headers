@@ -1,0 +1,14 @@
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: credentialless
+  Cross-Origin-Resource-Policy: cross-origin
+  X-Content-Type-Options: nosniff
+
+/games/*.wasm
+  Cache-Control: public, max-age=31536000, immutable
+
+/games/*.pck
+  Cache-Control: public, max-age=31536000, immutable
+
+/games/*.js
+  Cache-Control: public, max-age=31536000, immutable

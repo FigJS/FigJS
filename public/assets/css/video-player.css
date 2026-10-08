@@ -1,0 +1,431 @@
+.video-player {
+  --vp-aspect:          16 / 9;
+  --vp-radius:          12px;
+  --vp-bg:              #000;
+  --vp-border-width:    0px;
+  --vp-border-color:    transparent;
+  --vp-shadow:          0 4px 16px rgba(0, 0, 0, 0.35);
+  --vp-max-width:       100%;
+  --vp-placeholder-fg:  #8a8a8a;
+  --vp-placeholder-bg:  #141414;
+
+  --vp-accent:          #007acc;
+  --vp-accent-fg:       #ffffff;
+  --vp-track:           rgba(255, 255, 255, 0.22);
+  --vp-thumb:           #ffffff;
+  --vp-ctrls-bg:        linear-gradient(to top, rgba(0,0,0,0.65), transparent);
+  --vp-ctrls-pad:       10px 14px 12px;
+  --vp-btn-size:        34px;
+  --vp-seek-height:     5px;
+  --vp-thumb-size:      12px;
+
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: var(--vp-max-width);
+  aspect-ratio: var(--vp-aspect);
+  background: var(--vp-bg);
+  border: var(--vp-border-width) solid var(--vp-border-color);
+  border-radius: var(--vp-radius);
+  box-shadow: var(--vp-shadow);
+  overflow: hidden;
+  margin-inline: auto;
+  box-sizing: border-box;
+}
+
+.video-player > .video-player-stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.video-player > .video-player-stage > video,
+.video-player > .video-player-stage > iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: #000;
+  object-fit: contain;
+}
+
+.video-player > .video-player-stage > .vp-custom-ui {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  outline: none;
+  background: #000;
+}
+
+.vp-custom-ui > video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: #000;
+  object-fit: contain;
+  cursor: var(--cursor-pointer, pointer);
+}
+
+.vp-custom-ui:not(.vp-controls-visible) > video {
+  cursor: none;
+}
+
+.vp-custom-ui:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--vp-accent);
+}
+
+.vp-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: var(--vp-ctrls-pad);
+  background: var(--vp-ctrls-bg);
+  color: #fff;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 12px;
+  box-sizing: border-box;
+
+  pointer-events: none;
+
+  opacity: 0;
+  transition: opacity 200ms ease, transform 200ms ease;
+  transform: translateY(6px);
+}
+
+.vp-custom-ui.vp-controls-visible > .vp-controls {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.vp-controls .vp-btn,
+.vp-controls .vp-seek,
+.vp-controls .vp-vol-slider {
+  pointer-events: auto;
+}
+
+.vp-controls .vp-btn {
+  flex: 0 0 auto;
+  width: var(--vp-btn-size);
+  height: var(--vp-btn-size);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  cursor: var(--cursor-pointer, pointer);
+  transition: background 120ms ease, transform 80ms ease;
+  font: inherit;
+}
+.vp-controls .vp-btn:hover  { background: rgba(255, 255, 255, 0.14); }
+.vp-controls .vp-btn:active { transform: scale(0.95); }
+.vp-controls .vp-btn:focus-visible {
+  outline: 2px solid var(--vp-accent);
+  outline-offset: 2px;
+}
+.vp-controls .vp-btn svg {
+  width: 60%;
+  height: 60%;
+  display: block;
+  pointer-events: none;
+}
+
+.vp-controls .vp-seek {
+  flex: 1 1 auto;
+  position: relative;
+  height: max(var(--vp-seek-height), var(--vp-thumb-size));
+  display: flex;
+  align-items: center;
+  cursor: var(--cursor-pointer, pointer);
+  min-width: 60px;
+  touch-action: none;
+  user-select: none;
+}
+
+.vp-controls .vp-seek-track {
+  position: relative;
+  width: 100%;
+  height: var(--vp-seek-height);
+  background: var(--vp-track);
+  border-radius: calc(var(--vp-seek-height) / 2);
+}
+
+.vp-controls .vp-seek-fill {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 0%;
+  background: var(--vp-accent);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.vp-controls .vp-seek-thumb {
+  position: absolute;
+  top: 50%;
+  left: 0%;
+  width: var(--vp-thumb-size);
+  height: var(--vp-thumb-size);
+  margin-left: calc(var(--vp-thumb-size) / -2);
+  margin-top: calc(var(--vp-thumb-size) / -2);
+  background: var(--vp-thumb);
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.vp-controls .vp-seek:hover .vp-seek-thumb,
+.vp-controls .vp-seek.is-dragging .vp-seek-thumb {
+  opacity: 1;
+}
+
+.vp-controls .vp-time {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+  min-width: 72px;
+  text-align: right;
+  opacity: 0.9;
+  font-size: 11px;
+}
+
+.vp-controls .vp-vol-slider {
+  flex: 0 0 auto;
+  width: 72px;
+  height: var(--vp-seek-height);
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: var(--cursor-pointer, pointer);
+  padding: 0;
+  margin: 0;
+}
+.vp-controls .vp-vol-slider::-webkit-slider-runnable-track {
+  height: var(--vp-seek-height);
+  background: var(--vp-track);
+  border-radius: calc(var(--vp-seek-height) / 2);
+}
+.vp-controls .vp-vol-slider::-moz-range-track {
+  height: var(--vp-seek-height);
+  background: var(--vp-track);
+  border-radius: calc(var(--vp-seek-height) / 2);
+}
+.vp-controls .vp-vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: var(--vp-thumb-size);
+  height: var(--vp-thumb-size);
+  margin-top: calc((var(--vp-seek-height) - var(--vp-thumb-size)) / 2);
+  background: var(--vp-thumb);
+  border-radius: 50%;
+  border: none;
+  cursor: var(--cursor-pointer, pointer);
+}
+.vp-controls .vp-vol-slider::-moz-range-thumb {
+  width: var(--vp-thumb-size);
+  height: var(--vp-thumb-size);
+  background: var(--vp-thumb);
+  border-radius: 50%;
+  border: none;
+  cursor: var(--cursor-pointer, pointer);
+}
+
+.vp-custom-ui:fullscreen,
+.vp-custom-ui:-webkit-full-screen {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: #000 !important;
+  border-radius: 0 !important;
+  aspect-ratio: auto !important;
+  display: block !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.vp-custom-ui:fullscreen > video,
+.vp-custom-ui:-webkit-full-screen > video {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  background: #000 !important;
+}
+
+.vp-custom-ui:fullscreen:not(.vp-controls-visible),
+.vp-custom-ui:fullscreen:not(.vp-controls-visible) > video,
+.vp-custom-ui:-webkit-full-screen:not(.vp-controls-visible),
+.vp-custom-ui:-webkit-full-screen:not(.vp-controls-visible) > video {
+  cursor: none !important;
+}
+
+.vp-custom-ui:fullscreen,
+.vp-custom-ui:-webkit-full-screen {
+  --vp-btn-size:    46px;
+  --vp-seek-height: 8px;
+  --vp-thumb-size:  16px;
+  --vp-ctrls-pad:   16px 22px 18px;
+}
+
+.video-player > .video-player-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--vp-placeholder-bg);
+  color: var(--vp-placeholder-fg);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 12px;
+  text-align: center;
+  padding: 16px;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+.video-player > .video-player-empty .vp-empty-icon {
+  font-size: 28px;
+  opacity: 0.4;
+  line-height: 1;
+}
+.video-player > .video-player-empty .vp-empty-hint {
+  opacity: 0.6;
+  font-size: 11px;
+}
+
+.video-player-stage--editor {
+  background: #0c0c0c;
+}
+
+.vp-editor-inert,
+.vp-editor-inert * {
+  pointer-events: none !important;
+  cursor: var(--cursor-default, default) !important;
+}
+
+.vp-editor-inert .vp-controls {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+.video-player-stage--editor > video {
+  pointer-events: none;
+}
+
+.in-editor .video-player > .video-player-stage { cursor: var(--cursor-default, default); }
+
+.video-player > .vp-blocked {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--vp-placeholder-bg);
+}
+
+.vp-blocked-thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.vp-blocked-load {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px 10px 14px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font: 600 13px/1 system-ui, -apple-system, "Segoe UI", sans-serif;
+  cursor: var(--cursor-pointer, pointer);
+  transition: background 120ms ease;
+}
+
+.vp-blocked-load:hover,
+.vp-blocked-load:focus-visible {
+  background: var(--vp-accent);
+  color: var(--vp-accent-fg);
+}
+
+.vp-blocked-load svg {
+  width: 18px;
+  height: 18px;
+}
+
+.vp-controls .vp-seek-load {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0%;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.video-player.is-loading .vp-seek-load {
+  opacity: 1;
+}
+
+.vp-controls .vp-seek-load.is-indeterminate {
+  animation: vp-load-pulse 1.2s ease-in-out infinite;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.20) 50%,
+    transparent 100%
+  );
+}
+
+@keyframes vp-load-pulse {
+  0%   { transform: translateX(-40%); }
+  100% { transform: translateX(40%); }
+}
+
+.video-player.is-loading .vp-controls .vp-play {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.video-player.is-loading .vp-controls .vp-seek {
+  pointer-events: none;
+  cursor: var(--cursor-default, default);
+}
+
+.video-player.is-loading .vp-controls .vp-time-current {
+  opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vp-controls .vp-seek-load.is-indeterminate { animation: none; opacity: 0.5; }
+}

@@ -1,0 +1,95 @@
+.copy-content,
+.anchor-copy,
+.share-button {
+  --cc-size:           30px;
+  --cc-radius:         6px;
+  --cc-bg:             rgba(20, 20, 20, 0.85);
+  --cc-bg-hover:       rgba(20, 20, 20, 0.95);
+  --cc-fg:             #ffffff;
+  --cc-fg-flash:       #4ade80;
+  --cc-duration:       0.15s;
+  --cc-idle-opacity:   0.35;
+  --cc-offset-x:       8px;
+  --cc-offset-y:       8px;
+}
+
+.sharing-btn {
+  position: absolute;
+
+  top:    var(--cc-corner-top,    var(--cc-offset-y, 8px));
+  right:  var(--cc-corner-right,  var(--cc-offset-x, 8px));
+  bottom: var(--cc-corner-bottom, auto);
+  left:   var(--cc-corner-left,   auto);
+
+  width: var(--cc-size, 30px);
+  height: var(--cc-size, 30px);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+
+  border: none;
+  border-radius: var(--cc-radius, 6px);
+  background: var(--cc-bg, rgba(20, 20, 20, 0.85));
+  color: var(--cc-fg, #ffffff);
+  cursor: var(--cursor-pointer, pointer);
+
+  opacity: var(--cc-idle-opacity, 0.35);
+  transition: opacity var(--cc-duration, 0.15s) ease,
+              background-color var(--cc-duration, 0.15s) ease,
+              color var(--cc-duration, 0.15s) ease;
+
+  z-index: 2;
+}
+
+.copy-content:hover > .sharing-btn,
+.copy-content:focus-within > .sharing-btn,
+.anchor-copy:hover > .sharing-btn,
+.anchor-copy:focus-within > .sharing-btn,
+.share-button:hover > .sharing-btn,
+.share-button:focus-within > .sharing-btn,
+.sharing-btn:focus-visible {
+  opacity: 1;
+}
+
+.sharing-btn:hover {
+  background: var(--cc-bg-hover, rgba(20, 20, 20, 0.95));
+}
+
+.sharing-btn.is-flashed {
+  color: var(--cc-fg-flash, #4ade80);
+  opacity: 1;
+}
+
+.sharing-btn svg { display: block; }
+
+.in-editor .sharing-btn {
+  opacity: 1;
+  outline: 1px dashed rgba(0, 122, 204, 0.5);
+  outline-offset: -1px;
+}
+
+.sharing-btn--floating {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: auto;
+  bottom: auto;
+  z-index: 9999;
+
+  opacity: 1;
+}
+
+.share-button.is-share-flashed {
+  background-color: var(--share-flash, #4ade80) !important;
+  color: #0a0a0a !important;
+  border-color: var(--share-flash, #4ade80) !important;
+  transition: background-color 0.15s ease, color 0.15s ease,
+              border-color 0.15s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sharing-btn,
+  .share-button.is-share-flashed { transition: none; }
+}

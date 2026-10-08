@@ -1,0 +1,183 @@
+<!--
+  Boot blocks: injected into every saved page's <head> after <title>
+  (page-template.js for new pages, files.js on save).
+    1. The body stays hidden until stylesheets, fonts and images load.
+    2. Theme, language and site scale resolve before first paint
+       (mirrors theme-i18n.js; the critical CSS mirrors theme.css's
+       :root and dark tokens: change them together).
+    3. Entrances stay paused while hidden, then reveal in two stages so
+       the first visible frame is the animation's start.
+  html.is-booting hides the body; html.is-armed shows it with entrances
+  still paused. Every rule skips html.in-editor (the canvas).
+-->
+
+<style data-boot-critical>
+  :root {
+    --bg: #ffffff; --fg: #111111; --muted: #666666;
+    --accent: #0057ff; --surface: #f4f4f5; --surface-2: #e7e7ea;
+    --border: #e2e2e6; --shadow-rgb: 0 0 0;
+    --code-bg: #f6f8fa; --link: #0057ff; --link-hover: #0033b3;
+  }
+  :root[data-theme="dark"] {
+    --bg: #111111; --fg: #ffffff; --muted: #999999;
+    --accent: #ffffff; --surface: #161616; --surface-2: #222222;
+    --border: #2a2a2a; --shadow-rgb: 255 255 255;
+    --code-bg: #0b0b0b; --link: #9cdcfe; --link-hover: #cee6ff;
+  }
+  html { zoom: var(--site-scale, 1); }
+  html { background-color: var(--page-bg-color, var(--bg)); }
+  body { background: var(--bg); color: var(--fg); margin: 0; }
+
+  html.is-booting:not(.in-editor) body { visibility: hidden !important; }
+  html.is-booting:not(.in-editor) [class*="anim-"],
+  html.is-armed:not(.in-editor) [class*="anim-"] {
+    animation-play-state: paused !important;
+  }
+</style>
+
+<script data-boot-init>
+(function () {
+  var html = document.documentElement;
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
+  if (html.classList.contains('in-editor')) return;
+
+  window.scrollTo(0, 0);
+  html.classList.add('is-booting');
+
+  function lsGet(key) {
+    try { return localStorage.getItem(key); } catch (e) { return null; }
+  }
+
+  var mode = html.getAttribute('data-theme-mode')
+          || lsGet('site.theme-mode')
+          || 'auto';
+
+  if (mode === 'custom') {
+    html.removeAttribute('data-theme');
+  } else if (mode === 'force-dark') {
+    html.setAttribute('data-theme', 'dark');
+  } else if (mode === 'force-light') {
+    html.setAttribute('data-theme', 'light');
+  } else {
+    var requested = lsGet('site.theme')
+                 || html.getAttribute('data-theme-requested')
+                 || 'auto';
+    if (requested !== 'light' && requested !== 'dark') requested = 'auto';
+    var resolved = (requested === 'auto')
+      ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      : requested;
+    html.setAttribute('data-theme', resolved);
+  }
+
+  var lang = lsGet('site.lang')
+          || html.getAttribute('data-lang')
+          || (navigator.language || 'en').split('-')[0];
+  html.setAttribute('lang', lang);
+  html.setAttribute('data-lang', lang);
+
+  var s = html.getAttribute('data-site-scale');
+  var sp = html.getAttribute('data-site-scale-phone');
+  if (s) html.style.setProperty('--site-scale', s);
+  if (sp) html.style.setProperty('--site-scale-phone', sp);
+})();
+</script>
+
+<script data-boot-release>
+(function () {
+  var html = document.documentElement;
+  if (!html.classList.contains('is-booting')) return;
+
+  var MIN_BOOT_MS = 350;
+  var MAX_BOOT_MS = 2000;
+  var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
+  var released = false;
+
+  function arm() {
+    html.classList.remove('is-booting');
+    html.classList.add('is-armed');
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        html.classList.remove('is-armed');
+      });
+    });
+  }
+
+  function release() {
+    if (released) return;
+    released = true;
+    var elapsed = ((window.performance && performance.now) ? performance.now() : Date.now()) - t0;
+    var wait = Math.max(0, MIN_BOOT_MS - elapsed);
+    if (wait > 0) setTimeout(arm, wait);
+    else arm();
+  }
+
+  var domReady = new Promise(function (resolve) {
+    if (document.readyState === 'interactive' || document.readyState === 'complete') {
+      requestAnimationFrame(resolve);
+    } else {
+      document.addEventListener('DOMContentLoaded', function () {
+        requestAnimationFrame(resolve);
+      }, { once: true });
+    }
+  });
+
+  var fontsReady = (document.fonts && document.fonts.ready)
+    ? document.fonts.ready.catch(function () {})
+    : Promise.resolve();
+
+  var imagesReady = new Promise(function (resolve) {
+    var imgs = Array.prototype.filter.call(
+      document.images || [],
+      function (img) { return img.loading !== 'lazy'; }
+    );
+    var pending = imgs.length;
+    if (!pending) return resolve();
+
+    var done = false;
+    var finish = function () { if (!done) { done = true; resolve(); } };
+
+    imgs.forEach(function (img) {
+      if (img.complete) {
+        if (--pending === 0) finish();
+        return;
+      }
+      var onEnd = function () {
+        img.removeEventListener('load', onEnd);
+        img.removeEventListener('error', onEnd);
+        if (--pending === 0) finish();
+      };
+      img.addEventListener('load', onEnd, { once: true });
+      img.addEventListener('error', onEnd, { once: true });
+    });
+
+    setTimeout(finish, 1200);
+  });
+
+  var backgroundReady = domReady.then(function () {
+    var urls = [];
+    [document.documentElement, document.body].forEach(function (el) {
+      if (!el) return;
+      var bg = getComputedStyle(el).backgroundImage || '';
+      bg.replace(/url\((['"]?)(.*?)\1\)/g, function (_, q, u) {
+        if (u && u.indexOf('data:') !== 0) urls.push(u);
+        return '';
+      });
+    });
+    if (!urls.length) return;
+    return new Promise(function (resolve) {
+      var pending = urls.length;
+      var done = function () { if (--pending <= 0) resolve(); };
+      urls.forEach(function (u) {
+        var img = new Image();
+        img.onload = img.onerror = done;
+        img.src = u;
+      });
+      setTimeout(resolve, 1200);
+    });
+  });
+
+  Promise.all([domReady, fontsReady, imagesReady, backgroundReady]).then(release);
+  setTimeout(release, MAX_BOOT_MS);
+})();
+</script>

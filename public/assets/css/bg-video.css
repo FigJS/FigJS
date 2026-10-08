@@ -1,0 +1,82 @@
+@property --bg-video-fit { syntax: '*'; inherits: false; }
+@property --bg-video-focus { syntax: '*'; inherits: false; }
+@property --bg-video-opacity { syntax: '*'; inherits: false; }
+@property --bg-video-blur { syntax: '*'; inherits: false; }
+@property --bg-video-blend { syntax: '*'; inherits: false; }
+@property --bg-video-tint { syntax: '*'; inherits: false; }
+
+.bg-video,
+body {
+  --_bgv-fit: var(--bg-video-fit, cover);
+  --_bgv-focus: var(--bg-video-focus, center);
+  --_bgv-opacity: var(--bg-video-opacity, 1);
+  --_bgv-blur: var(--bg-video-blur, 0px);
+  --_bgv-blend: var(--bg-video-blend, normal);
+  --_bgv-tint: var(--bg-video-tint, transparent);
+}
+
+:where(.bg-video[data-bg-video]:not([data-bg-video=""])) {
+  position: relative;
+  isolation: isolate;
+}
+
+body[data-bg-video]:not([data-bg-video=""]) {
+  background-color: transparent;
+  background-image: none;
+}
+body[data-bg-video]:not([data-bg-video=""])::before { display: none; }
+
+.bg-video-layer {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  user-select: none;
+}
+
+.bg-video-layer > video {
+  position: absolute;
+  inset: calc(var(--_bgv-blur) * -2);
+  width: calc(100% + var(--_bgv-blur) * 4);
+  height: calc(100% + var(--_bgv-blur) * 4);
+  display: block;
+  object-fit: var(--_bgv-fit);
+  object-position: var(--_bgv-focus);
+  opacity: var(--_bgv-opacity);
+  filter: blur(var(--_bgv-blur));
+  mix-blend-mode: var(--_bgv-blend);
+  pointer-events: none;
+}
+
+.bg-video-layer > .bg-video-tint {
+  position: absolute;
+  inset: 0;
+  background: var(--_bgv-tint);
+}
+
+[data-bg-video-attach="fixed"] > .bg-video-layer {
+  clip-path: inset(0);
+}
+[data-bg-video-attach="fixed"] > .bg-video-layer > video {
+  position: fixed;
+  inset: calc(var(--_bgv-blur) * -2);
+  width: calc(100vw + var(--_bgv-blur) * 4);
+  height: calc(100vh + var(--_bgv-blur) * 4);
+}
+
+body > .bg-video-layer {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: calc(100vh / var(--_bg-scale, 1));
+  border-radius: 0;
+  background-image: var(--page-bg-image, none);
+  background-size: var(--page-bg-zoom-size, var(--page-bg-size, cover));
+  background-position: var(--page-bg-position, center);
+  background-repeat: var(--page-bg-repeat, no-repeat);
+}
+body > .bg-video-layer > .bg-video-tint {
+  background-image: var(--page-overlay-image, linear-gradient(var(--page-overlay, transparent), var(--page-overlay, transparent)));
+  mix-blend-mode: var(--page-overlay-blend, normal);
+}

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FigJS</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="./vendor/grapes.min.css">
+  <link rel="stylesheet" href="./styles/editor.css">
+  <script src="./vendor/grapes.min.js"></script>
+  <script src="./scripts/state.js"></script>
+
+  <!-- Preset files push plugins into window.PresetPlugins for grapesjs-setup.js. -->
+  <script src="./presets/registry.js"></script>
+  <script src="./presets/primitive-styles.preset.js"></script>
+  <script src="./presets/component-primitives.preset.js"></script>
+  <script src="./presets/base-elements.preset.js"></script>
+  <script src="./presets/free-canvas.preset.js"></script>
+  <script src="./presets/image-cycle.preset.js"></script>
+  <script src="./presets/basic-blocks.preset.js"></script>
+  <script src="./presets/content-blocks.preset.js"></script>
+  <script src="./presets/motion-blocks.preset.js"></script>
+  <script src="./presets/motion-advanced.preset.js"></script>
+  <script src="./presets/game-embed.preset.js"></script>
+  <script src="./presets/ui-presets.preset.js"></script>
+  <script src="./presets/layout-presets.preset.js"></script>
+  <script src="./presets/web-elements.preset.js"></script>
+  <script src="./presets/universal-traits.preset.js"></script>
+  <script src="./presets/motion-scrubber.preset.js"></script>
+  <script src="./presets/masking.preset.js"></script>
+  <script src="./presets/expand-collapse.preset.js"></script>
+  <script src="./presets/theme-i18n.preset.js"></script>
+  <script src="./presets/image-silhouette.preset.js"></script>
+  <script src="./presets/audio-player.preset.js"></script>
+  <script src="./presets/video-player.preset.js"></script>
+  <script src="./presets/md-block.preset.js"></script>
+  <script src="./presets/styleguide.preset.js"></script>
+  <script src="./presets/scroll-track.preset.js"></script>
+  <script src="./presets/sticky-layout.preset.js"></script>
+  <script src="./presets/viewport-window.preset.js"></script>
+  <script src="./presets/parallax.preset.js"></script>
+  <script src="./presets/bg-video.preset.js"></script>
+  <script src="./presets/subpage.preset.js"></script>
+  <script src="./presets/sharing.preset.js"></script>
+  <script src="./presets/navigation.preset.js"></script>
+  <script src="./presets/a11y.preset.js"></script>
+</head>
+<body>
+
+  <div id="editor-toolbar">
+    <div class="tb-zone tb-zone--left">
+      <div class="toolbar-group">
+        <button id="btn-toggle-files" class="tb-icon" data-icon="menu" title="Toggle sidebar (`)"></button>
+        <button id="btn-new-draft" data-icon="plus" title="New page or draft">Page</button>
+        <button class="btn-save" id="btn-save" title="Save (Ctrl+S)">Save</button>
+      </div>
+    </div>
+
+    <div class="tb-zone tb-zone--center">
+      <div class="toolbar-group">
+        <button id="btn-test-motion" class="btn-motion" data-icon="replay" title="Replay animations and scroll reveals">Replay</button>
+        <button id="btn-toggle-motion" class="btn-motion tb-icon" title="Play motion (4)"></button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="toolbar-group">
+        <button id="btn-promote-class" class="btn-promote" title="Move this element's own styles into a reusable class">Make Class</button>
+        <button id="btn-save-to-library" class="btn-library" title="Save the selection as a linked Library element">Make Library Element</button>
+        <button id="btn-unlink-library" class="btn-unlink" title="Detach the selection from the Library">Make Local</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="toolbar-group">
+        <button class="device-btn tb-icon active" data-device="desktop" data-icon="desktop" title="Desktop (1)"></button>
+        <button class="device-btn tb-icon" data-device="tablet" data-icon="tablet" title="Tablet (2)"></button>
+        <button class="device-btn tb-icon" data-device="phone" data-icon="phone" title="Phone (3)"></button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="toolbar-group">
+        <span class="tb-label" data-icon="language" aria-hidden="true"></span>
+        <select id="lang-select" title="Canvas language"></select>
+        <button id="btn-lang-add" class="tb-icon" data-icon="plus" title="Add language"></button>
+        <button id="btn-lang-remove" class="tb-icon" data-icon="minus" title="Remove language (deletes its text on this page)"></button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="toolbar-group">
+        <button id="btn-theme-edit" class="btn-theme" title="Theme being edited"></button>
+        <button id="theme-alt-tools" title="Clear this theme's colour overrides" hidden>Clear</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="toolbar-group">
+        <span class="tb-label" data-icon="zoom" aria-hidden="true"></span>
+        <input type="range" id="zoom-slider" min="25" max="200" value="100" title="Canvas zoom (Ctrl+= / Ctrl+- / Ctrl+0)">
+        <span id="zoom-label" class="tb-readout">100%</span>
+      </div>
+    </div>
+
+    <div class="tb-zone tb-zone--right">
+      <div class="toolbar-group">
+        <button id="btn-site" title="Site settings: home page, defaults, meta">Site</button>
+        <button id="btn-shortcuts-help" class="tb-icon" data-icon="keyboard" title="Keyboard shortcuts (Ctrl+/)"></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="workspace">
+    <div id="left-panel">
+      <div class="panel-tabs">
+        <div class="panel-tab active" data-tab="files" data-icon="folder" title="Files ([ / ] to cycle)"></div>
+        <div class="panel-tab" data-tab="page" data-icon="wrench" title="Page settings ([ / ] to cycle)"></div>
+        <div class="panel-tab" data-tab="media" data-icon="picture" title="Media and fonts ([ / ] to cycle)"></div>
+        <div class="panel-tab" data-tab="library" data-icon="stack" title="Library ([ / ] to cycle)"></div>
+        <div class="panel-tab" data-tab="code" data-icon="code" title="Code ([ / ] to cycle)"></div>
+      </div>
+
+      <div class="panel-tab-body active" id="tab-files">
+        <div id="file-tree">Loading</div>
+      </div>
+
+      <div id="left-panel-resizer" title="Drag to resize"></div>
+
+      <div class="panel-tab-body" id="tab-page">
+        <div id="page-settings"></div>
+      </div>
+
+      <div class="panel-tab-body" id="tab-media">
+        <div id="media-panel"></div>
+      </div>
+
+      <div class="panel-tab-body" id="tab-library">
+        <div id="library-list">Loading</div>
+      </div>
+
+      <div class="panel-tab-body" id="tab-code">
+        <div class="code-view-toggle" id="code-view-toggle">
+          <button type="button" class="cvt-btn active" data-mode="auto" title="Follow the canvas selection automatically">Auto</button>
+          <button type="button" class="cvt-btn" data-mode="page" title="Always show the whole document">Full Page</button>
+          <button type="button" class="cvt-btn" data-mode="selection" title="Always show the selected element only">Selected</button>
+          <button type="button" class="cvt-expand" id="btn-expand-code" data-icon="expand" title="Expand code editor"></button>
+        </div>
+        <div id="code-view-label">Showing: Full Page</div>
+
+        <div id="page-code-view" class="code-stack">
+          <div class="code-panel" data-code-panel="head" data-default-open="true">
+            <div class="panel-header code-panel-header" role="button" tabindex="0" aria-expanded="true">
+              <div class="code-panel-name"><span class="code-panel-caret" aria-hidden="true"></span><h4>Document Head</h4></div>
+              <div class="code-panel-actions">
+                <button class="btn-apply" id="btn-header-probe" title="Show the response headers this page gets (COOP/COEP)">Headers</button>
+                <button class="btn-apply" id="apply-head" title="Apply Head HTML">Push</button>
+              </div>
+            </div>
+            <div class="code-editor-wrap"><pre class="code-highlight" aria-hidden="true"><code></code></pre><textarea id="live-head" class="code-input" spellcheck="false" placeholder="<title>Page Title</title>"></textarea></div>
+          </div>
+
+          <div class="code-panel" data-code-panel="html" data-default-open="true">
+            <div class="panel-header code-panel-header" role="button" tabindex="0" aria-expanded="true">
+              <div class="code-panel-name"><span class="code-panel-caret" aria-hidden="true"></span><h4>Body HTML</h4></div>
+              <div class="code-panel-actions">
+                <button class="btn-apply" id="apply-html" title="Apply Body HTML">Push</button>
+              </div>
+            </div>
+            <div class="code-editor-wrap"><pre class="code-highlight" aria-hidden="true"><code></code></pre><textarea id="live-html" class="code-input" spellcheck="false"></textarea></div>
+          </div>
+
+          <div class="code-panel" data-code-panel="css" data-default-open="true">
+            <div class="panel-header code-panel-header" role="button" tabindex="0" aria-expanded="true">
+              <div class="code-panel-name"><span class="code-panel-caret" aria-hidden="true"></span><h4>Custom CSS</h4></div>
+              <div class="code-panel-actions">
+                <button class="btn-apply" id="apply-css" title="Apply CSS changes">Push</button>
+              </div>
+            </div>
+            <div class="code-editor-wrap"><pre class="code-highlight" aria-hidden="true"><code></code></pre><textarea id="live-css" class="code-input" spellcheck="false"></textarea></div>
+          </div>
+        </div>
+
+        <div id="raw-file-view" class="code-stack" style="display:none;">
+          <div class="panel-header">
+            <h4 id="raw-file-name">file.css</h4>
+            <div class="code-panel-actions">
+              <button class="btn-apply" id="btn-expand-raw" data-icon="expand" title="Expand code editor"></button>
+              <button class="btn-apply" id="save-raw-file">Save</button>
+              <button class="btn-apply" id="close-raw-file">Close</button>
+            </div>
+          </div>
+          <div class="code-editor-wrap"><pre class="code-highlight" aria-hidden="true"><code></code></pre><textarea id="raw-file-content" class="code-input" spellcheck="false"></textarea></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="canvas-wrapper">
+      <div id="editor-container"></div>
+      <div id="right-panel-resizer" title="Drag to resize"></div>
+
+      <div id="presets-panel-content" style="display:none;">
+        <div id="preset-buttons"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="code-overlay">
+    <div class="code-overlay-backdrop"></div>
+    <div class="code-overlay-panel">
+      <div class="code-overlay-header">
+        <strong>Code Editor</strong>
+        <button id="code-overlay-close">Close</button>
+      </div>
+      <div id="code-overlay-body"></div>
+    </div>
+  </div>
+
+  <button id="exit-preview-btn" type="button" title="Exit preview (Esc)">Exit preview</button>
+
+  <script src="./scripts/icons.js"></script>
+  <script src="./scripts/dialogs.js"></script>
+  <script src="./scripts/undo-keyboard.js"></script>
+  <script src="./scripts/undo-policy.js"></script>
+  <!-- page-body.js registers a plugin: before grapesjs-setup.js. -->
+  <script src="./scripts/page-body.js"></script>
+  <script src="./scripts/css-parts.js"></script>
+  <script src="./scripts/grapesjs-setup.js"></script>
+  <script src="./scripts/canvas.js"></script>
+  <script src="./scripts/i18n.js"></script>
+  <script src="./scripts/settings-ui.js"></script>
+  <script src="./scripts/strip-comments.js"></script>
+  <script src="./scripts/files.js"></script>
+  <script src="./scripts/library.js"></script>
+  <script src="./scripts/code-format.js"></script>
+  <script src="./scripts/code-view.js"></script>
+  <script src="./scripts/media.js"></script>
+  <script src="./scripts/thumbnails.js"></script>
+  <script src="./scripts/cursor-field.js"></script>
+  <script src="./scripts/page-tab.js"></script>
+  <script src="./scripts/presets-tab.js"></script>
+  <script src="./scripts/component-settings.js"></script>
+  <script src="./scripts/style-manager.js"></script>
+  <script src="./scripts/preset-chips.js"></script>
+  <script src="./scripts/ui.js"></script>
+  <script src="./scripts/layers.js"></script>
+  <script src="./scripts/theme-edit.js"></script>
+  <script src="./scripts/link-picker.js"></script>
+  <script src="./scripts/preview.js"></script>
+  <script src="./scripts/site.js"></script>
+  <script src="./scripts/boot.js"></script>
+  <script src="./scripts/editor.js"></script>
+</body>
+</html>

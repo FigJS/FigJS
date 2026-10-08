@@ -1,0 +1,30 @@
+# LF everywhere; Windows launchers keep CRLF.
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+*.sh text eol=lf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.mp3 binary
+*.ogg binary
+*.wav binary
+*.mp4 binary
+*.webm binary
+*.wasm binary
+*.pck binary
+*.exe binary
+
+# Vendored builds are not diffed or counted as project code.
+editor/vendor/** -diff linguist-vendored

@@ -1,0 +1,37 @@
+.mask-circle,
+.mask-hexagon,
+.mask-star,
+.mask-blob {
+  --mask-scale: 1;
+  --mask-pos-x: 50%;
+  --mask-pos-y: 50%;
+
+  -webkit-mask-size: calc(100% * var(--mask-scale)) calc(100% * var(--mask-scale));
+          mask-size: calc(100% * var(--mask-scale)) calc(100% * var(--mask-scale));
+
+  -webkit-mask-position: var(--mask-pos-x) var(--mask-pos-y);
+          mask-position: var(--mask-pos-x) var(--mask-pos-y);
+
+  -webkit-mask-repeat: no-repeat;
+          mask-repeat: no-repeat;
+}
+
+.mask-circle {
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='white'/></svg>");
+          mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='white'/></svg>");
+}
+
+.mask-hexagon {
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='25,0 75,0 100,50 75,100 25,100 0,50' fill='white'/></svg>");
+          mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='25,0 75,0 100,50 75,100 25,100 0,50' fill='white'/></svg>");
+}
+
+.mask-star {
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,0 61,35 98,35 68,57 79,91 50,70 21,91 32,57 2,35 39,35' fill='white'/></svg>");
+          mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,0 61,35 98,35 68,57 79,91 50,70 21,91 32,57 2,35 39,35' fill='white'/></svg>");
+}
+
+.mask-blob {
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><path d='M46.3,-58.8C58.9,-49.4,67.4,-33.5,70.7,-16.7C74,0.2,72.1,17.9,64.2,32.4C56.3,46.8,42.4,58,26.6,64.6C10.8,71.2,-6.9,73.3,-23.6,68.9C-40.4,64.6,-56.2,53.9,-65.5,39.1C-74.8,24.3,-77.6,5.4,-73.9,-11.9C-70.1,-29.2,-59.9,-44.9,-46.1,-54.5C-32.3,-64.1,-16.2,-67.6,0.6,-68.4C17.3,-69.3,34.6,-67.5,46.3,-58.8Z' fill='white' transform='translate(100 100)'/></svg>");
+          mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><path d='M46.3,-58.8C58.9,-49.4,67.4,-33.5,70.7,-16.7C74,0.2,72.1,17.9,64.2,32.4C56.3,46.8,42.4,58,26.6,64.6C10.8,71.2,-6.9,73.3,-23.6,68.9C-40.4,64.6,-56.2,53.9,-65.5,39.1C-74.8,24.3,-77.6,5.4,-73.9,-11.9C-70.1,-29.2,-59.9,-44.9,-46.1,-54.5C-32.3,-64.1,-16.2,-67.6,0.6,-68.4C17.3,-69.3,34.6,-67.5,46.3,-58.8Z' fill='white' transform='translate(100 100)'/></svg>");
+}

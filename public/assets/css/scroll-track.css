@@ -1,0 +1,225 @@
+.scroll-track {
+  --track-gap:           16px;
+  --track-pad:           0;
+  --track-radius:        0px;
+  --track-bg:            transparent;
+  --track-border-color:  transparent;
+  --track-border-width:  0px;
+  --track-arrow-size:    40px;
+  --track-arrow-icon:    20px;
+  --track-arrow-inset:   8px;
+  --track-dot-size:      8px;
+  --track-dot-gap:       6px;
+  --track-dots-inset:    8px;
+  --track-caption-size:  0.9em;
+  --track-caption-gap:   8px;
+
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: var(--track-pad);
+  background: var(--track-bg);
+  border: var(--track-border-width) solid var(--track-border-color);
+  border-radius: var(--track-radius);
+  box-sizing: border-box;
+}
+
+.scroll-track .track-viewport {
+  display: block;
+  position: relative;
+}
+
+.scroll-track .track-inner {
+  display: flex;
+  gap: var(--track-gap);
+}
+
+.scroll-track .track-slide {
+  flex: 0 0 auto;
+  min-width: 40px;
+  min-height: 40px;
+  box-sizing: border-box;
+}
+
+.scroll-track[data-track-mode="marquee"] {
+  overflow: hidden;
+}
+
+.scroll-track[data-track-mode="marquee"] .track-viewport {
+  overflow: hidden;
+}
+
+.scroll-track[data-track-mode="marquee"] .track-inner {
+  width: max-content;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.scroll-track.is-marquee-editing .track-viewport {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}
+
+html.in-editor.motion-paused .scroll-track[data-track-mode="marquee"] .track-viewport {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.scroll-track[data-track-mode="carousel"] {
+  overflow: visible;
+}
+
+.scroll-track[data-track-mode="carousel"] .track-viewport {
+  display: flex;
+  gap: var(--track-gap);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  touch-action: pan-y pinch-zoom;
+}
+.scroll-track[data-track-mode="carousel"] .track-viewport.is-swiping {
+  scroll-snap-type: none;
+}
+.scroll-track[data-track-mode="carousel"] .track-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.scroll-track[data-track-mode="carousel"] .track-inner {
+  display: contents;
+}
+
+.scroll-track[data-track-mode="carousel"] .track-slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.scroll-track > .track-arrows {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--track-arrow-inset);
+  z-index: 3;
+}
+.scroll-track > .track-arrows > .track-arrow {
+  pointer-events: auto;
+  width: var(--track-arrow-size);
+  height: var(--track-arrow-size);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  cursor: var(--cursor-pointer, pointer);
+  transition: background 120ms ease, opacity 120ms ease;
+}
+.scroll-track > .track-arrows > .track-arrow:hover { background: rgba(0, 0, 0, 0.8); }
+.scroll-track > .track-arrows > .track-arrow:disabled { opacity: 0.25; cursor: var(--cursor-default, default); }
+.scroll-track > .track-arrows > .track-arrow svg { width: var(--track-arrow-icon); height: var(--track-arrow-icon); display: block; }
+
+.scroll-track > .track-dots {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--track-dots-inset) + var(--track-caption-room, 0px));
+  transform: translateX(-50%);
+  display: flex;
+  gap: var(--track-dot-gap);
+  z-index: 3;
+}
+.scroll-track > .track-dots > .track-dot {
+  width: var(--track-dot-size);
+  height: var(--track-dot-size);
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+  cursor: var(--cursor-pointer, pointer);
+  transition: background 120ms ease;
+}
+.scroll-track > .track-dots > .track-dot.is-active { background: #fff; }
+
+.scroll-track > .track-caption {
+  margin-top: var(--track-caption-gap);
+  min-height: 1.2em;
+  font-size: var(--track-caption-size);
+  opacity: 0.8;
+  text-align: center;
+}
+
+.scroll-box {
+  --box-height:       320px;
+  --box-pad:          16px;
+  --box-bg:           transparent;
+  --box-radius:       0px;
+  --box-border-width: 0px;
+  --box-border-color: transparent;
+
+  position: relative;
+  display: block;
+  width: 100%;
+  height: var(--box-height);
+  padding: var(--box-pad);
+  background: var(--box-bg);
+  border: var(--box-border-width) solid var(--box-border-color);
+  border-radius: var(--box-radius);
+  box-sizing: border-box;
+}
+
+.scroll-box[data-box-mode="scroll"] {
+  overflow: auto;
+  scrollbar-width: thin;
+  overscroll-behavior: var(--box-overscroll, auto);
+}
+.scroll-box[data-box-mode="clip"]   { overflow: hidden; }
+
+.in-editor .scroll-track .track-slide {
+  outline: 1px dashed rgba(255, 255, 255, 0.14);
+  outline-offset: -2px;
+  transition: outline-color 120ms ease;
+}
+.in-editor .scroll-track .track-slide:hover {
+  outline-color: rgba(0, 122, 204, 0.55);
+}
+.in-editor .scroll-track .track-slide.gjs-selected {
+  outline: 2px solid #007acc;
+  outline-offset: -2px;
+}
+.in-editor .scroll-track .track-slide:empty::after {
+  content: "Double-click to add an image";
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  padding: 12px;
+  color: rgba(255, 255, 255, 0.35);
+  font: 12px/1.3 system-ui, -apple-system, "Segoe UI", sans-serif;
+  text-align: center;
+  pointer-events: none;
+}
+
+.in-editor .scroll-box:empty::after {
+  content: "Drop content inside";
+  display: block;
+  color: #555;
+  font-size: 12px;
+  text-align: center;
+  padding-top: 8px;
+  pointer-events: none;
+}
+

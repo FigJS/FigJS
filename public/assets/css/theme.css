@@ -1,0 +1,51 @@
+:root {
+  --bg: #ffffff;
+  --fg: #111111;
+  --muted: #666666;
+  --accent: #0057ff;
+  --surface: #f4f4f5;
+  --surface-2: #e7e7ea;
+  --border: #e2e2e6;
+  --border-2: #c9c9cf;
+  --shadow-rgb: 0 0 0;
+  --code-bg: #f6f8fa;
+  --link: #0057ff;
+  --link-hover: #0033b3;
+}
+
+[data-theme="dark"],
+:root[data-theme="dark"] {
+  --bg: #111111;
+  --fg: #ffffff;
+  --muted: #999999;
+  --accent: #ffffff;
+  --surface: #161616;
+  --surface-2: #222222;
+  --border: #2a2a2a;
+  --border-2: #444444;
+  --shadow-rgb: 255 255 255;
+  --code-bg: #0b0b0b;
+  --link: #9cdcfe;
+  --link-hover: #cee6ff;
+}
+
+body {
+  background-color: var(--page-bg-color, var(--bg));
+  color: var(--page-fg, var(--fg));
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+[data-lang="en"] [data-lang-content]:not([data-lang-content~="en"]),
+[data-lang="es"] [data-lang-content]:not([data-lang-content~="es"]),
+[data-lang="fr"] [data-lang-content]:not([data-lang-content~="fr"]),
+[data-lang="de"] [data-lang-content]:not([data-lang-content~="de"]),
+[data-lang="ja"] [data-lang-content]:not([data-lang-content~="ja"]) {
+  display: none !important;
+}
+
+[data-lang-content]:not([data-lang]) { display: revert; }
+
+body[data-theme-mode="custom"] {
+  --bg: revert;
+  --fg: revert;
+}

@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html data-theme-requested="auto" data-lang="en" lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Style guide | My Site</title><style data-boot-critical="">
+  :root {
+    --bg: #ffffff; --fg: #111111; --muted: #666666;
+    --accent: #0057ff; --surface: #f4f4f5; --surface-2: #e7e7ea;
+    --border: #e2e2e6; --shadow-rgb: 0 0 0;
+    --code-bg: #f6f8fa; --link: #0057ff; --link-hover: #0033b3;
+  }
+  :root[data-theme="dark"] {
+    --bg: #111111; --fg: #ffffff; --muted: #999999;
+    --accent: #ffffff; --surface: #161616; --surface-2: #222222;
+    --border: #2a2a2a; --shadow-rgb: 255 255 255;
+    --code-bg: #0b0b0b; --link: #9cdcfe; --link-hover: #cee6ff;
+  }
+  html { zoom: var(--site-scale, 1); }
+  html { background-color: var(--page-bg-color, var(--bg)); }
+  body { background: var(--bg); color: var(--fg); margin: 0; }
+
+  html.is-booting:not(.in-editor) body { visibility: hidden !important; }
+  html.is-booting:not(.in-editor) [class*="anim-"],
+  html.is-armed:not(.in-editor) [class*="anim-"] {
+    animation-play-state: paused !important;
+  }
+</style>
+
+<script data-boot-init="">
+(function () {
+  var html = document.documentElement;
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
+  if (html.classList.contains('in-editor')) return;
+
+  window.scrollTo(0, 0);
+  html.classList.add('is-booting');
+
+  function lsGet(key) {
+    try { return localStorage.getItem(key); } catch (e) { return null; }
+  }
+
+  var mode = html.getAttribute('data-theme-mode')
+          || lsGet('site.theme-mode')
+          || 'auto';
+
+  if (mode === 'custom') {
+    html.removeAttribute('data-theme');
+  } else if (mode === 'force-dark') {
+    html.setAttribute('data-theme', 'dark');
+  } else if (mode === 'force-light') {
+    html.setAttribute('data-theme', 'light');
+  } else {
+    var requested = html.getAttribute('data-theme-requested')
+                 || lsGet('site.theme')
+                 || 'auto';
+    var resolved = (requested === 'auto')
+      ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      : requested;
+    html.setAttribute('data-theme', resolved);
+  }
+
+  var lang = lsGet('site.lang')
+          || html.getAttribute('data-lang')
+          || (navigator.language || 'en').split('-')[0];
+  html.setAttribute('lang', lang);
+  html.setAttribute('data-lang', lang);
+
+  var s = html.getAttribute('data-site-scale');
+  var sp = html.getAttribute('data-site-scale-phone');
+  if (s) html.style.setProperty('--site-scale', s);
+  if (sp) html.style.setProperty('--site-scale-phone', sp);
+})();
+</script>
+
+<script data-boot-release="">
+(function () {
+  var html = document.documentElement;
+  if (!html.classList.contains('is-booting')) return;
+
+  var MIN_BOOT_MS = 350;
+  var MAX_BOOT_MS = 2000;
+  var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
+  var released = false;
+
+  function arm() {
+    html.classList.remove('is-booting');
+    html.classList.add('is-armed');
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        html.classList.remove('is-armed');
+      });
+    });
+  }
+
+  function release() {
+    if (released) return;
+    released = true;
+    var elapsed = ((window.performance && performance.now) ? performance.now() : Date.now()) - t0;
+    var wait = Math.max(0, MIN_BOOT_MS - elapsed);
+    if (wait > 0) setTimeout(arm, wait);
+    else arm();
+  }
+
+  var domReady = new Promise(function (resolve) {
+    if (document.readyState === 'interactive' || document.readyState === 'complete') {
+      requestAnimationFrame(resolve);
+    } else {
+      document.addEventListener('DOMContentLoaded', function () {
+        requestAnimationFrame(resolve);
+      }, { once: true });
+    }
+  });
+
+  var fontsReady = (document.fonts && document.fonts.ready)
+    ? document.fonts.ready.catch(function () {})
+    : Promise.resolve();
+
+  var imagesReady = new Promise(function (resolve) {
+    var imgs = Array.prototype.filter.call(
+      document.images || [],
+      function (img) { return img.loading !== 'lazy'; }
+    );
+    var pending = imgs.length;
+    if (!pending) return resolve();
+
+    var done = false;
+    var finish = function () { if (!done) { done = true; resolve(); } };
+
+    imgs.forEach(function (img) {
+      if (img.complete) {
+        if (--pending === 0) finish();
+        return;
+      }
+      var onEnd = function () {
+        img.removeEventListener('load', onEnd);
+        img.removeEventListener('error', onEnd);
+        if (--pending === 0) finish();
+      };
+      img.addEventListener('load', onEnd, { once: true });
+      img.addEventListener('error', onEnd, { once: true });
+    });
+
+    setTimeout(finish, 1200);
+  });
+
+  var backgroundReady = domReady.then(function () {
+    var urls = [];
+    [document.documentElement, document.body].forEach(function (el) {
+      if (!el) return;
+      var bg = getComputedStyle(el).backgroundImage || '';
+      bg.replace(/url\((['"]?)(.*?)\1\)/g, function (_, q, u) {
+        if (u && u.indexOf('data:') !== 0) urls.push(u);
+        return '';
+      });
+    });
+    if (!urls.length) return;
+    return new Promise(function (resolve) {
+      var pending = urls.length;
+      var done = function () { if (--pending <= 0) resolve(); };
+      urls.forEach(function (u) {
+        var img = new Image();
+        img.onload = img.onerror = done;
+        img.src = u;
+      });
+      setTimeout(resolve, 1200);
+    });
+  });
+
+  Promise.all([domReady, fontsReady, imagesReady, backgroundReady]).then(release);
+  setTimeout(release, MAX_BOOT_MS);
+})();
+</script>
+<meta name="theme-color" content="#000000">
+<link rel="stylesheet" href="/assets/css/site.css">
+<link rel="stylesheet" href="/assets/css/theme.css">
+<link rel="stylesheet" href="/assets/css/presets.css">
+<link rel="stylesheet" href="/assets/fonts/fonts.css">
+
+<script src="/assets/js/theme-i18n.js" defer=""></script>
+<link rel="stylesheet" href="/assets/css/ui-presets.css">
+<link rel="stylesheet" href="/assets/css/navigation.css">
+<link rel="stylesheet" href="/assets/css/motion.css">
+<link rel="stylesheet" href="/assets/css/universal.css">
+<link rel="stylesheet" href="/assets/css/inapp.css">
+<link rel="stylesheet" href="/assets/css/motion-scrubber.css">
+<link rel="stylesheet" href="/assets/css/masking.css">
+<link rel="stylesheet" href="/assets/css/panels.css">
+<link rel="stylesheet" href="/assets/css/audio-player.css">
+<link rel="stylesheet" href="/assets/css/video-player.css">
+<link rel="stylesheet" href="/assets/css/md-block.css">
+<link rel="stylesheet" href="/assets/css/scroll-track.css">
+<link rel="stylesheet" href="/assets/css/viewport-window.css">
+<link rel="stylesheet" href="/assets/css/subpage.css">
+<link rel="stylesheet" href="/assets/css/zoom-box.css">
+<link rel="stylesheet" href="/assets/css/gallery.css">
+<link rel="stylesheet" href="/assets/css/sharing.css">
+<link rel="stylesheet" href="/assets/css/a11y.css"><link rel="stylesheet" href="/assets/css/library.css">
+<script src="/assets/js/tooltip.js" defer=""></script>
+<script src="/assets/js/lang-visibility.js" defer=""></script>
+<script src="/assets/js/span-bleed.js" defer=""></script>
+<script src="/assets/js/navigation.js" defer=""></script>
+<script src="/assets/js/image-cycle.js" defer=""></script>
+<script src="/assets/js/motion.js" defer=""></script>
+<script src="/assets/js/game-embed.js" defer=""></script>
+<script src="/assets/js/sticky-hold.js" defer=""></script>
+<script src="/assets/js/universal.js" defer=""></script>
+<script src="/assets/js/inapp.js" defer=""></script>
+<script src="/assets/js/motion-scrubber.js" defer=""></script>
+<script src="/assets/js/panels.js" defer=""></script>
+<script src="/assets/js/image-silhouette.js" defer=""></script>
+<script src="/assets/js/media-settings.js" defer=""></script>
+<script src="/assets/js/audio-player.js" defer=""></script>
+<script src="/assets/js/video-player.js" defer=""></script>
+<script src="/assets/js/md-block.js" defer=""></script>
+<script src="/assets/js/scroll-track.js" defer=""></script>
+<script src="/assets/js/carousel-controls.js" defer=""></script>
+<script src="/assets/js/viewport-window.js" defer=""></script>
+<script src="/assets/js/subpage.js" defer=""></script>
+<script src="/assets/js/zoom-box.js" defer=""></script>
+<script src="/assets/js/gallery.js" defer=""></script>
+<script src="/assets/js/sharing.js" defer=""></script>
+<script src="/assets/js/a11y.js" defer=""></script><style id="page-styles">
+#ibv39{margin:0;}
+#in686{margin:8px 0 0;}
+#iigqp{padding-bottom:32px;}
+#id0bs{margin:0;}
+#i7k9m{margin:0;}
+#ixtii{margin:8px 0 0;}
+#im2vj{margin:8px 0 0;}
+#iy20o{margin:8px 0 0;}
+#if97e{margin:0;text-align:left;}
+#io6ll{margin:0;}
+#i3r53{margin:10px 0 0;}
+#ib7vq{margin:0;}
+#i0dnu{margin:10px 0 0;}
+#idrbf{margin:0;}
+#idusz{margin:10px 0 0;}
+#iaa36{margin:0;}
+#iii3c{margin:10px 0 0;}
+#i44th{--grid-min:200px;--gap:16px;}
+#iojl1{margin:8px 0 0;}
+#irjwl{margin:0;line-height:1.9;}
+#i6y3i{margin:10px 0 0;}
+#isd7s{margin:0;}
+#sg-text{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#ixnsl{margin:10px 0 0;}
+#it4ba{margin:10px 0 0;}
+#iqluq{margin:10px 0 0;}
+#ifi1m{color:inherit;}
+#iwc07{margin:10px 0 0;}
+#ilscay{margin:10px 0 0;}
+#i7tkg{--grid-min:180px;--gap:16px;}
+#ivful{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#iwxehs{margin:0;}
+#ixb60l{margin:0;}
+#ify7m2{margin:10px 0 0;}
+#ilzowl{margin:0;}
+#il1jzh{margin:10px 0 0;}
+#ijq7yl{margin:0;}
+#iol4p4{margin:10px 0 0;}
+#iqfmrq{margin:0;}
+#i7fjyn{margin:10px 0 0;}
+#izahp8{background:var(--surface, #1e1e1e);border-radius:10px;}
+#iri2lh{margin:0;}
+#ihsxuh{margin:10px 0 0;}
+#i24nnk{border-radius:8px;}
+#isiszz{margin:0;}
+#ibz2i5{margin:10px 0 0;}
+#ivs4wr{border-radius:8px;}
+#i1ibg2{margin:0;}
+#i98in6{margin:10px 0 0;}
+#i7vm7b{border-radius:8px;}
+#iutiwf{margin:0;}
+#icezq1{margin:10px 0 0;}
+#indokg{border-radius:8px;}
+#iv9e5h{--grid-min:200px;--gap:16px;}
+#iol7vl{margin:8px 0 0;}
+#iqc3mk{margin:0;}
+#i0htn7{margin:10px 0 0;}
+#ijmydz{border-radius:10px;}
+#i1nw99{margin:0;}
+#itmvck{margin:10px 0 0;}
+#i4f8wi{border-radius:10px;}
+#i9wxmh{--grid-min:200px;--gap:16px;}
+#i02je5{padding:28px;border-radius:12px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%233a6df0'/%3E%3Cstop offset='1' stop-color='%239b51e0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E") center / cover;}
+#igjv05{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#i3gbej{margin:10px 0 0;}
+#ian61u{min-height:150px;border-radius:8px;color:#fff;}
+#iq8w4t{margin:10px 0 0;}
+#il99hk{min-height:150px;border-radius:8px;color:#fff;}
+#i556kn{margin:10px 0 0;}
+#i0zbel{min-height:150px;border-radius:8px;color:#fff;}
+#ir1mri{--grid-min:200px;--gap:16px;}
+#ipn4b7{margin:8px 0 0;}
+#iqxtlm{margin:10px 0 0;}
+#iqz1hl{min-height:130px;border-radius:8px;color:#fff;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='1' y2='0'%3E%3Cstop offset='0' stop-color='%23f2994a'/%3E%3Cstop offset='1' stop-color='%23eb5757'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E");}
+#io6qlw{margin:10px 0 0;}
+#ipzh5j{min-height:130px;border-radius:8px;background-color:var(--surface-2, #222);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 5l13 30 32 3-24 21 7 32-28-17-28 17 7-32L5 38l32-3z' fill='%23f5b041'/%3E%3C/svg%3E");}
+#iusoqd{margin:10px 0 0;}
+#ivkbce{min-height:130px;border-radius:8px;background-size:32px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 5l13 30 32 3-24 21 7 32-28-17-28 17 7-32L5 38l32-3z' fill='%23f5b041'/%3E%3C/svg%3E");}
+#it0tni{margin:10px 0 0;}
+#ixts0d{min-height:130px;border-radius:8px;color:#fff;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%233a6df0'/%3E%3Cstop offset='1' stop-color='%239b51e0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E");}
+#igdv0h{--grid-min:200px;--gap:16px;}
+#inoyne{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#iohpyu{margin:0;}
+#igmp86{min-height:70px;background:var(--surface-2, #222);border-radius:6px;}
+#iv4qhv{margin:10px 0 0;}
+#i38q0u{background:var(--surface-2, #222);border-radius:6px;padding:8px;}
+#iy02lc{margin:10px 0 0;}
+#ibzrj7{gap:6px;}
+#i8neks{margin:10px 0 0;}
+#inup7g{margin:10px 0 0;}
+#iezgri{height:80px;background:var(--surface-2, #222);border-radius:6px;}
+#iqmpgw{margin:10px 0 0;}
+#i79vxy{--grid-min:200px;--gap:16px;}
+#ik6evm{margin:8px 0 0;}
+#iya776{background:var(--surface-2, #222);border-radius:8px;}
+#ihxs8i{background:var(--surface-2, #222);border-radius:8px;}
+#ibuey1{margin:10px 0 0;}
+#ig34lh{background:var(--surface-2, #222);border-radius:8px;}
+#irzc8x{background:var(--surface-2, #222);border-radius:8px;}
+#i7drel{background:var(--surface-2, #222);border-radius:8px;}
+#iy8qyv{margin:10px 0 0;}
+#imj4un{background:var(--surface-2, #222);border-radius:8px;}
+#id94gx{background:var(--surface-2, #222);border-radius:8px;}
+#ib0kj5{background:var(--surface-2, #222);border-radius:8px;}
+#ighuvl{background:var(--surface-2, #222);border-radius:8px;}
+#iqle79{margin:10px 0 0;}
+#ikusg6{background:var(--surface-2, #222);border-radius:8px;}
+#i9hbsl{background:var(--surface-2, #222);border-radius:8px;}
+#i9gcjl{background:var(--surface-2, #222);border-radius:8px;}
+#iieseh{background:var(--surface-2, #222);border-radius:8px;}
+#ivrw7l{background:var(--surface-2, #222);border-radius:8px;}
+#i2qcul{--grid-min:120px;}
+#ia6uss{margin:10px 0 0;}
+#iviu7f{margin:8px 0 0;}
+#iza3u9{background:var(--surface-2, #222);border-radius:8px;flex:1;}
+#izvlxh{background:var(--surface-2, #222);border-radius:8px;flex:1;}
+#ivj94y{margin:10px 0 0;}
+#ikx0un{display:block;width:100%;border-radius:6px;}
+#ifg3cx{background:var(--surface-2, #222);border-radius:8px;}
+#i8g1bo{margin:10px 0 0;}
+#i4qa1z{display:block;width:100%;border-radius:6px;}
+#i9vg13{background:var(--surface-2, #222);border-radius:8px;}
+#iyy8x4{margin:10px 0 0;}
+#iivdcc{margin:8px 0 0;}
+#idlg7l{background:var(--surface-2, #222);border-radius:8px;}
+#ixqykj{margin:10px 0 0;}
+#idhgwo{background:var(--surface-2, #222);border-radius:8px;border-radius:0;text-align:center;}
+#is025u{margin:10px 0 0;}
+#sg-layout{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#iy1bup{background:var(--surface-2, #222);border-radius:6px;}
+#ibudvt{margin:10px 0 0;}
+#issbbq{background:var(--surface-2, #222);border-radius:6px;}
+#izb5xk{margin:10px 0 0;}
+#ikudne{background:var(--surface-2, #222);border-radius:6px;}
+#iu2dlx{margin:10px 0 0;}
+#iiw16q{display:flex;}
+#i5pt6j{margin:10px 0 0;}
+#ia3lbc{display:flex;}
+#ifot9w{margin:10px 0 0;}
+#ii7g2i{margin:10px 0 0;}
+#isd4o9{--grid-min:160px;--gap:16px;}
+#ii6bep{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#i3uzqh{margin:0;}
+#ifrmyx{margin-top:420px;}
+#is43a6{height:640px;padding:0 10px;}
+#iq5psh{height:220px;border-radius:6px;background:var(--surface-2, #222);}
+#in2avh{margin:10px 0 0;}
+#ieh1x4{margin-top:420px;}
+#i1mx9g{height:640px;padding:0 10px;}
+#ih5vos{height:220px;border-radius:6px;background:var(--surface-2, #222);}
+#ix30j2{margin:10px 0 0;}
+#imllfi{height:640px;padding:0 10px;display:flex;flex-direction:column;justify-content:space-between;}
+#i7qn2u{height:220px;border-radius:6px;background:var(--surface-2, #222);}
+#iv4p7d{margin:10px 0 0;}
+#i6iyqj{--grid-min:220px;--gap:16px;}
+#iplxwe{margin:8px 0 0;}
+#icb5yr{position:absolute;top:0;left:0;width:55%;height:110px;background:var(--surface, #1a1a1a);border-radius:8px;}
+#i3y018{position:absolute;top:20px;left:22%;width:55%;height:110px;background:var(--surface-2, #2a2a2a);border-radius:8px;}
+#iwiryl{position:absolute;top:40px;left:44%;width:55%;height:110px;background:var(--border-2, #444);border-radius:8px;}
+#ie580v{height:150px;}
+#ix20fz{margin:10px 0 0;}
+#iz4bz7{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#iginix{margin:0;}
+#i8ntso{display:block;width:100%;border-radius:6px;}
+#isg9p6{border-radius:10px;background:var(--surface-2, #222);}
+#i7xgcn{margin:10px 0 0;}
+#i8ej75{display:block;width:100%;border-radius:6px;}
+#i3hghn{border-radius:50%;}
+#iv75xh{margin:10px 0 0;}
+#ib0rwl{margin:0;}
+#i3a1ka{margin:10px 0 0;}
+#izl8ph{margin:0;}
+#irnsdl{margin:10px 0 0;}
+#iu7x8a{margin:0;}
+#iy5lme{margin:10px 0 0;}
+#ibvick{margin:0;}
+#ium28c{max-width:160px;}
+#iq9i4t{margin:10px 0 0;}
+#iuipwl{--grid-min:200px;--gap:16px;}
+#iq9004{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#i1h0r3{display:block;width:100%;border-radius:6px;}
+#icl79u{margin:10px 0 0;}
+#izbjpm{display:block;width:100%;border-radius:6px;}
+#i4tu21{margin:10px 0 0;}
+#i3sjck{display:block;width:100%;border-radius:6px;}
+#ittw24{margin:10px 0 0;}
+#i5n86k{display:block;width:100%;border-radius:6px;}
+#ikxk1r{margin:10px 0 0;}
+#iwurck{display:block;width:100%;border-radius:6px;}
+#il8oan{margin:10px 0 0;}
+#igx4s6{display:block;width:100%;border-radius:6px;}
+#im9tce{margin:10px 0 0;}
+#i678qq{--grid-min:160px;--gap:16px;}
+#iy85lk{margin:8px 0 0;}
+#ig5q3k{background:var(--surface-2, #222);border-radius:8px;}
+#i3l3o8{margin:10px 0 0;}
+#ih5qah{background:var(--surface-2, #222);border-radius:8px;}
+#i1jv4j{margin:10px 0 0;}
+#iqz5qr{background:var(--surface-2, #222);border-radius:8px;}
+#idkcdl{margin:10px 0 0;}
+#iwvo9j{background:var(--surface-2, #222);border-radius:8px;}
+#iefoe4{margin:10px 0 0;}
+#iq78n5{--grid-min:160px;--gap:16px;}
+#iosmre{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#ijbjyc{margin:0;}
+#ixtusf{margin:8px 0 0;}
+#ipummk{display:block;width:96px;height:96px;}
+#ibafbi{margin:10px 0 0;}
+#isck4g{display:block;width:96px;height:96px;}
+#i6s60n{margin:10px 0 0;}
+#iauv9d{display:block;width:96px;height:96px;}
+#iucohj{margin:10px 0 0;}
+#i0n3pi{--grid-min:160px;--gap:16px;}
+#i436er{margin:8px 0 0;}
+#irv0mc{display:block;width:90px;}
+#iejm0b{margin:10px 0 0;}
+#ijlzob{display:block;width:90px;}
+#invc4e{margin:10px 0 0;}
+#izic6g{display:block;width:90px;}
+#ip8b4x{margin:10px 0 0;}
+#iig20g{display:block;width:90px;}
+#iexaek{margin:10px 0 0;}
+#i7p54k{display:block;width:90px;}
+#i0hmbk{margin:10px 0 0;}
+#ip92ga{display:block;width:90px;height:90px;}
+#ir30yi{margin:10px 0 0;}
+#itxl2h{--grid-min:140px;--gap:16px;}
+#iuumic{margin:8px 0 0;}
+#ixgq6i{width:110px;height:110px;}
+#io7z0j{margin:10px 0 0;}
+#i8fnwk{width:110px;height:110px;}
+#indtkl{margin:10px 0 0;}
+#igi8py{width:110px;height:110px;}
+#ig7lr1{margin:10px 0 0;}
+#iaar3h{width:110px;height:110px;}
+#il0ypw{margin:10px 0 0;}
+#iw9og9{--grid-min:140px;--gap:16px;}
+#i4ohc6{margin:8px 0 0;}
+#i8z51k{margin:10px 0 0;}
+#i3d5w6{width:200px;height:200px;}
+#itohpl{margin:10px 0 0;}
+#iidynk{display:block;width:100%;border-radius:6px;}
+#ie9hav{border-radius:8px;}
+#iiuovk{margin:10px 0 0;}
+#ibqsdg{--grid-min:220px;--gap:16px;}
+#i2673h{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#iwqdwv{margin:0;}
+#iidpsf{margin:10px 0 0;}
+#ir6bru{margin:10px 0 0;}
+#icfp7i{margin:10px 0 0;}
+#i9rn7g{margin:10px 0 0;}
+#inzh5c{margin:10px 0 0;}
+#i0n8wr{margin:10px 0 0;}
+#io1ajh{--grid-min:160px;--gap:16px;}
+#ikxvsj{margin:8px 0 0;}
+#irhalt{margin:10px 0 0;}
+#sg-motion{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#i2uu68{margin:10px 0 0;}
+#ihfc5g{display:inline-block;}
+#ijj73z{margin:10px 0 0;}
+#ig2tt2{width:40px;display:block;}
+#iiw24j{margin:10px 0 0;}
+#ikacee{--grid-min:160px;--gap:16px;}
+#id5v19{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#ik82d2{margin:0;}
+#i5h81x{margin:10px 0 0;}
+#il4cmf{margin:10px 0 0;}
+#ije2m9{margin:10px 0 0;}
+#i0ziud{margin:10px 0 0;}
+#inon7h{margin:10px 0 0;}
+#if6c86{margin:10px 0 0;}
+#icibcd{--near-range:220px;--near-far-opacity:0.1;}
+#iipc7q{margin:10px 0 0;}
+#if310x{--grid-min:140px;--gap:16px;}
+#ix1jdg{margin:10px 0 0;}
+#i0qvsp{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#i3x471{margin:0;}
+#ic0mj6{margin:10px 0 0;}
+#itdw25{margin:10px 0 0;}
+#iln3y5{margin:10px 0 0;}
+#i40av7{margin:10px 0 0;}
+#i8y2zu{margin:10px 0 0;}
+#iqff2j{--grid-min:160px;--gap:16px;}
+#id6d1g{margin:8px 0 0;}
+#ihctap{margin:10px 0 0;}
+#ij4ze3{margin:10px 0 0;}
+#iopzxt{margin:0;font-size:1.6rem;font-weight:700;color:#fff;}
+#itx1wb{position:absolute;inset:12px 12px 12px 45%;border-radius:6px;background:rgba(255,255,255,0.08);}
+#iej6pc{position:relative;height:110px;border-radius:6px;overflow:clip;display:flex;align-items:center;padding:0 14px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='1' y2='0'%3E%3Cstop offset='0' stop-color='%23f2994a'/%3E%3Cstop offset='1' stop-color='%23eb5757'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E") center / cover;}
+#iisf0u{margin:10px 0 0;}
+#iao4ue{border-radius:6px;}
+#i1a2es{margin:10px 0 0;}
+#ib7cw6{border-radius:6px;}
+#iz6dwl{margin:10px 0 0;}
+#i3461c{--grid-min:180px;--gap:16px;}
+#igco0z{background:var(--surface-2, #222);border-radius:8px;}
+#ikuzzc{margin:10px 0 0;}
+#i0ljab{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#in9y8g{margin:10px 0 0;}
+#iim08p{display:block;width:200px;border-radius:6px;}
+#ixd7ug{display:block;width:200px;border-radius:6px;}
+#idk7fl{display:block;width:200px;border-radius:6px;}
+#iaz399{display:block;width:200px;border-radius:6px;}
+#ijder5{margin:10px 0 0;}
+#igvewp{display:block;width:100%;aspect-ratio:16 / 7;object-fit:cover;border-radius:6px;}
+#iv6ayj{display:block;width:100%;aspect-ratio:16 / 7;object-fit:cover;border-radius:6px;}
+#i4v4jo{display:block;width:100%;aspect-ratio:16 / 7;object-fit:cover;border-radius:6px;}
+#iidy74{margin:10px 0 0;}
+#igzeul{margin:0;}
+#ib7qmy{height:140px;}
+#ics0ml{margin:10px 0 0;}
+#i7xiq8{margin:0;}
+#iv64ld{height:80px;}
+#itf8pm{margin:10px 0 0;}
+#ihpis8{--grid-min:240px;--gap:16px;}
+#iohdg2{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#isk0c7{margin:0;}
+#ianir4{background:var(--surface-2, #222);border-radius:8px;}
+#ii8f2r{--stick-range:120vh;}
+#izsgft{margin:10px 0 0;}
+#imi2nf{background:var(--surface-2, #222);border-radius:8px;}
+#it7p6i{--stick-range:120vh;}
+#i5gi8p{margin:10px 0 0;}
+#itngw2{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%233a6df0'/%3E%3Cstop offset='1' stop-color='%239b51e0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E") center / cover;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;}
+#imwcjj{--stick-range:140vh;--stick-window:50vh;}
+#iw79il{margin:10px 0 0;}
+#ickag2{--stick-range:90vh;}
+#iqxy5f{--stick-range:90vh;}
+#iz6gxl{--stick-range:90vh;}
+#ix5gup{margin:10px 0 0;}
+#iiimbf{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#iu690l{margin:10px 0 0;}
+#ieytxk{margin:10px 0 0;}
+#iapx2e{--grid-min:280px;--gap:16px;}
+#i0k0ql{width:100%;height:100%;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%233a6df0'/%3E%3Cstop offset='1' stop-color='%239b51e0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E") center / cover;}
+#iejg21{width:900px;height:600px;}
+#ie3e2r{height:220px;}
+#ie9hw6{margin:10px 0 0;}
+#i2xkqi{display:block;width:100%;height:100%;object-fit:cover;}
+#i0686x{aspect-ratio:16 / 9;border-radius:6px;}
+#inlgiq{margin:10px 0 0;}
+#i4e3jc{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;}
+#itv0in{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;}
+#ix5fwm{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;}
+#ihs3zx{--gap:8px;--grid-phone-cols:3;}
+#i13x7s{margin:10px 0 0;}
+#ind1ia{--grid-min:280px;--gap:16px;}
+#ikedaj{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#i7z1f9{margin:10px 0 0;}
+#i3lj8s{margin:8px 0 0;}
+#iazezk{margin-top:0;}
+#ilykex{margin:10px 0 0;}
+#imv85l{margin-top:0;}
+#izfboj{margin:10px 0 0;}
+#iajouo{--grid-min:220px;--gap:16px;}
+#ikrw9e{margin:0;}
+#i0p44o{margin:10px 0 0;}
+#ii4p2r{margin:8px 0 0;}
+#i7w37x{margin:10px 0 0;}
+#io7fjr{margin:10px 0 0;}
+#iahxbi{margin:10px 0 0;}
+#iv3f96{margin:10px 0 0;}
+#i601m3{margin:10px 0 0;}
+#inua73{--grid-min:180px;--gap:16px;}
+#i5zzmc4{margin:8px 0 0;}
+#irelww1{margin:0;padding:14px;background:var(--code-bg, #141414);border-radius:6px;overflow:auto;}
+#isaqloo{margin:10px 0 0;}
+#izp39aw{margin:0;padding-right:40px;}
+#i6mfwnu{margin:10px 0 0;}
+#i3h96uj{background:var(--surface-2, #222);border-radius:6px;}
+#idygssg{margin:10px 0 0;}
+#ijwhku5{--grid-min:220px;--gap:16px;}
+#i38cjo{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#iu1l0p5{margin:0;}
+#ivt71n7{display:flex;flex-direction:column;gap:4px;}
+#iforvmf{margin:10px 0 0;}
+#ir63yln{margin:10px 0 0;}
+#ixs2bpy{margin:10px 0 0;}
+#issl3hf{margin:10px 0 0;}
+#iwcyoyj{margin:10px 0 0;}
+#ic8ohdt{background:var(--surface-2, #222);border-radius:6px;}
+#i8x4879{margin:10px 0 0;}
+#ira0gb8{margin:10px 0 0;}
+#i8ta8aj{--grid-min:220px;--gap:16px;}
+#ilxygnj{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#im7ztdb{margin:10px 0 0;}
+#inast3j{margin:10px 0 0;}
+#ilil7iz{margin:10px 0 0;}
+#idfkge1{margin:10px 0 0;}
+#ipnrfby{--grid-min:200px;--gap:16px;}
+#i340boa{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#izdijd1{margin:10px 0 0;}
+#iqqrmcc{display:flex;justify-content:space-around;text-align:center;flex-wrap:wrap;gap:20px;}
+#iva0llw{margin:10px 0 0;}
+#ikap0he{--fx:8%;--fy:12%;}
+#io3wghl{--fx:60%;--fy:55%;--fr:-8deg;}
+#imnx6nh{margin:10px 0 0;}
+#ii488o3{margin:10px 0 0;}
+#i7diqwo{display:flex;flex-direction:column;gap:18px;padding-bottom:48px;}
+#igps{--contents-width:220px;}
+</style></head><body data-lang="en" data-theme-requested="auto" data-text-md="on" data-lang-names="{&quot;en&quot;:&quot;English&quot;}"><main class="container pad-lg"><div class="contents-layout" id="igps"><nav data-contents="auto" aria-label="Style guide" data-contents-levels="h2" data-contents-sticky="true" class="contents"><p data-lang-en="Style guide" class="contents-title">Style guide</p><ol class="contents-list"></ol></nav><div class="contents-body"><header id="iigqp"><h1 id="ibv39" data-lang-en="Style guide">Style guide</h1><p id="in686" data-lang-en="Every preset tag and component in one place. Select a specimen and tune its tag in the Presets tab: everything using that tag follows." class="text-muted">Every preset tag and component in one place. Select a specimen and tune its tag in the Presets tab: everything using that tag follows.</p></header><section id="sg-text"><h2 data-lang-en="1. Text">1. Text</h2><p id="id0bs" data-lang-en="Headings, paragraphs and the text tags. With Markdown on (Page tab), text elements format themselves." class="text-muted">Headings, paragraphs and the text tags. With Markdown on (Page tab), text elements format themselves.</p><div data-contents-skip="true"><h1 id="i7k9m" data-lang-en="Heading one">Heading one</h1><h2 id="ixtii" data-lang-en="Heading two">Heading two</h2><h3 id="im2vj" data-lang-en="Heading three">Heading three</h3><h4 id="iy20o" data-lang-en="Heading four">Heading four</h4></div><p id="if97e" data-lang-en="A lede paragraph introduces a section in a softer colour." class="lede">A lede paragraph introduces a section in a softer colour.</p><div class="grid-auto" id="i44th"><div data-contents-skip="true" class="card pad-md"><p id="io6ll" data-lang-en="Muted helper text." class="text-muted">Muted helper text.</p><p id="i3r53" data-lang-en=".text-muted" class="text-small text-muted">.text-muted</p></div><div data-contents-skip="true" class="card pad-md"><p id="ib7vq" data-lang-en="Small text." class="text-small">Small text.</p><p id="i0dnu" data-lang-en=".text-small" class="text-small text-muted">.text-small</p></div><div data-contents-skip="true" class="card pad-md"><p id="idrbf" data-lang-en="Large text." class="text-large">Large text.</p><p id="idusz" data-lang-en=".text-large" class="text-small text-muted">.text-large</p></div><div data-contents-skip="true" class="card pad-md"><p data-text-overflow="ellipsis" id="iaa36" data-lang-en="This line never wraps, however narrow it gets." class="text-nowrap">This line never wraps, however narrow it gets.</p><p id="iii3c" data-lang-en=".text-nowrap (ends in an ellipsis)" class="text-small text-muted">.text-nowrap (ends in an ellipsis)</p></div></div><h3 id="iojl1" data-lang-en="Markdown in text">Markdown in text</h3><div data-contents-skip="true" class="card pad-md"><p data-text-md="on" id="irjwl" data-lang-en="**Bold**, *italic*, ___underline___, --strike--, ==highlight==, `code`, H~2~O, x^2^, ||spoiler||, [a link](#), [colour]{tomato} and [hex]{#4fc3f7}.">**Bold**, *italic*, ___underline___, --strike--, ==highlight==, `code`, H~2~O, x^2^, ||spoiler||, [a link](#), [colour]{tomato} and [hex]{#4fc3f7}.</p><p id="i6y3i" data-lang-en="Markdown in text (Page tab, Text and spacing)" class="text-small text-muted">Markdown in text (Page tab, Text and spacing)</p></div><blockquote class="quote">"A pull quote or testimonial." <cite data-lang-en="Attribution">Attribution</cite></blockquote><p id="isd7s" data-lang-en="&lt;span class=&quot;badge&quot;&gt;Badge&lt;/span&gt; &lt;span class=&quot;badge&quot;&gt;Tag&lt;/span&gt; &lt;span class=&quot;badge&quot;&gt;Label&lt;/span&gt;"><span class="badge">Badge</span> <span class="badge">Tag</span> <span class="badge">Label</span></p></section><section id="ivful"><h2 data-lang-en="2. Buttons and links">2. Buttons and links</h2><div class="grid-auto" id="i7tkg"><div data-contents-skip="true" class="card pad-md"><a href="#" data-lang-en="Primary" class="btn btn-primary">Primary</a><p id="ixnsl" data-lang-en=".btn .btn-primary" class="text-small text-muted">.btn .btn-primary</p></div><div data-contents-skip="true" class="card pad-md"><a href="#" data-lang-en="Secondary" class="btn btn-secondary">Secondary</a><p id="it4ba" data-lang-en=".btn .btn-secondary" class="text-small text-muted">.btn .btn-secondary</p></div><div data-contents-skip="true" class="card pad-md"><a href="#" data-lang-en="Ghost" class="btn btn-ghost">Ghost</a><p id="iqluq" data-lang-en=".btn .btn-ghost" class="text-small text-muted">.btn .btn-ghost</p></div><div data-contents-skip="true" class="card pad-md"><a href="#" id="ifi1m" data-lang-en="Underline grows" class="hover-underline">Underline grows</a><p id="iwc07" data-lang-en=".hover-underline" class="text-small text-muted">.hover-underline</p></div><div data-contents-skip="true" class="card pad-md"><button href="#" type="button" data-lang-en="Share" class="btn share-button">Share</button><p id="ilscay" data-lang-en=".share-button" class="text-small text-muted">.share-button</p></div></div></section><section id="igjv05"><h2 data-lang-en="3. Surfaces">3. Surfaces</h2><p id="iwxehs" data-lang-en="Panels that hold content: cards, glass, outlines and shadows." class="text-muted">Panels that hold content: cards, glass, outlines and shadows.</p><div class="grid-auto" id="iv9e5h"><div data-contents-skip="true" class="card pad-md"><p id="ixb60l" data-lang-en="Plain card.">Plain card.</p><p id="ify7m2" data-lang-en=".card" class="text-small text-muted">.card</p></div><div class="card card-elevated pad-md"><p id="ilzowl" data-lang-en="Raised.">Raised.</p><p id="il1jzh" data-lang-en=".card .card-elevated" class="text-small text-muted">.card .card-elevated</p></div><div class="card card-accent pad-md"><p id="ijq7yl" data-lang-en="Accent border.">Accent border.</p><p id="iol4p4" data-lang-en=".card .card-accent" class="text-small text-muted">.card .card-accent</p></div><div class="shadow-custom pad-md" id="izahp8"><p id="iqfmrq" data-lang-en="Tunable shadow.">Tunable shadow.</p><p id="i7fjyn" data-lang-en=".shadow-custom" class="text-small text-muted">.shadow-custom</p></div><div class="outline-thin pad-md" id="i24nnk"><p id="iri2lh" data-lang-en="Thin outline.">Thin outline.</p><p id="ihsxuh" data-lang-en=".outline-thin" class="text-small text-muted">.outline-thin</p></div><div class="outline-thick pad-md" id="ivs4wr"><p id="isiszz" data-lang-en="Thick outline.">Thick outline.</p><p id="ibz2i5" data-lang-en=".outline-thick" class="text-small text-muted">.outline-thick</p></div><div class="outline-dashed pad-md" id="i7vm7b"><p id="i1ibg2" data-lang-en="Dashed outline.">Dashed outline.</p><p id="i98in6" data-lang-en=".outline-dashed" class="text-small text-muted">.outline-dashed</p></div><div class="ring-accent pad-md" id="indokg"><p id="iutiwf" data-lang-en="Accent ring.">Accent ring.</p><p id="icezq1" data-lang-en=".ring-accent" class="text-small text-muted">.ring-accent</p></div></div><h3 id="iol7vl" data-lang-en="Glass">Glass</h3><div id="i02je5"><div class="grid-auto" id="i9wxmh"><div class="glass pad-md" id="ijmydz"><p id="iqc3mk" data-lang-en="Light glass.">Light glass.</p><p id="i0htn7" data-lang-en=".glass" class="text-small text-muted">.glass</p></div><div class="glass-dark pad-md" id="i4f8wi"><p id="i1nw99" data-lang-en="Dark glass.">Dark glass.</p><p id="itmvck" data-lang-en=".glass-dark" class="text-small text-muted">.glass-dark</p></div></div></div></section><section id="inoyne"><h2 data-lang-en="4. Backgrounds">4. Backgrounds</h2><div class="grid-auto" id="ir1mri"><div class="bg-gradient-linear pad-lg" id="ian61u">Linear gradient<p id="i3gbej" data-lang-en=".bg-gradient-linear" class="text-small text-muted">.bg-gradient-linear</p></div><div class="bg-gradient-radial pad-lg" id="il99hk">Radial gradient<p id="iq8w4t" data-lang-en=".bg-gradient-radial" class="text-small text-muted">.bg-gradient-radial</p></div><div class="bg-gradient-linear bg-noise pad-lg" id="i0zbel">Gradient with grain<p id="i556kn" data-lang-en=".bg-noise" class="text-small text-muted">.bg-noise</p></div></div><h3 id="ipn4b7" data-lang-en="Background image">Background image</h3><div class="grid-auto" id="igdv0h"><div class="bg-image-cover pad-md" id="iqz1hl"><p id="iqxtlm" data-lang-en=".bg-image-cover" class="text-small text-muted">.bg-image-cover</p></div><div class="bg-image-contain pad-md" id="ipzh5j"><p id="io6qlw" data-lang-en=".bg-image-contain" class="text-small text-muted">.bg-image-contain</p></div><div class="bg-image-tile pad-md" id="ivkbce"><p id="iusoqd" data-lang-en=".bg-image-tile" class="text-small text-muted">.bg-image-tile</p></div><div class="bg-image-cover bg-fixed pad-md" id="ixts0d"><p id="it0tni" data-lang-en=".bg-fixed (stays put while scrolling)" class="text-small text-muted">.bg-fixed (stays put while scrolling)</p></div></div></section><section id="sg-layout"><h2 data-lang-en="5. Layout">5. Layout</h2><p id="iohpyu" data-lang-en="Arranging children: rows, columns, grids and splits." class="text-muted">Arranging children: rows, columns, grids and splits.</p><div class="grid-auto" id="i79vxy"><div data-contents-skip="true" class="card pad-md"><div id="igmp86" data-lang-en="centered" class="flex-center">centered</div><p id="iv4qhv" data-lang-en=".flex-center" class="text-small text-muted">.flex-center</p></div><div data-contents-skip="true" class="card pad-md"><div class="flex-between" id="i38q0u"><span data-lang-en="left">left</span><span data-lang-en="right">right</span></div><p id="iy02lc" data-lang-en=".flex-between" class="text-small text-muted">.flex-between</p></div><div data-contents-skip="true" class="card pad-md"><div class="flex-col" id="ibzrj7"><span data-lang-en="one">one</span><span data-lang-en="two">two</span></div><p id="i8neks" data-lang-en=".flex-col" class="text-small text-muted">.flex-col</p></div><div data-contents-skip="true" class="card pad-md"><div class="center-row"><span data-lang-en="a" class="badge">a</span><span data-lang-en="b" class="badge">b</span><span data-lang-en="c" class="badge">c</span></div><p id="inup7g" data-lang-en=".center-row" class="text-small text-muted">.center-row</p></div><div data-contents-skip="true" class="card pad-md"><div class="relative" id="iezgri"><span data-lang-en="middle" class="absolute-center badge">middle</span></div><p id="iqmpgw" data-lang-en=".relative + .absolute-center" class="text-small text-muted">.relative + .absolute-center</p></div></div><h3 id="ik6evm" data-lang-en="Grids">Grids</h3><div data-contents-skip="true"><div class="grid-2"><div id="iya776" data-lang-en="1" class="pad-md">1</div><div id="ihxs8i" data-lang-en="2" class="pad-md">2</div></div><p id="ibuey1" data-lang-en=".grid-2 (one column on phones)" class="text-small text-muted">.grid-2 (one column on phones)</p></div><div data-contents-skip="true"><div class="grid-3"><div id="ig34lh" data-lang-en="1" class="pad-md">1</div><div id="irzc8x" data-lang-en="2" class="pad-md">2</div><div id="i7drel" data-lang-en="3" class="pad-md">3</div></div><p id="iy8qyv" data-lang-en=".grid-3" class="text-small text-muted">.grid-3</p></div><div data-contents-skip="true"><div class="grid-4 grid-no-collapse"><div id="imj4un" data-lang-en="1" class="pad-md">1</div><div id="id94gx" data-lang-en="2" class="pad-md">2</div><div id="ib0kj5" data-lang-en="3" class="pad-md">3</div><div id="ighuvl" data-lang-en="4" class="pad-md">4</div></div><p id="iqle79" data-lang-en=".grid-4 .grid-no-collapse (keeps its columns)" class="text-small text-muted">.grid-4 .grid-no-collapse (keeps its columns)</p></div><div data-contents-skip="true"><div class="grid-auto" id="i2qcul"><div id="ikusg6" data-lang-en="auto" class="pad-md">auto</div><div id="i9hbsl" data-lang-en="auto" class="pad-md">auto</div><div id="i9gcjl" data-lang-en="auto" class="pad-md">auto</div><div id="iieseh" data-lang-en="auto" class="pad-md">auto</div><div id="ivrw7l" data-lang-en="auto" class="pad-md">auto</div></div><p id="ia6uss" data-lang-en=".grid-auto (fills the width)" class="text-small text-muted">.grid-auto (fills the width)</p></div><h3 id="iviu7f" data-lang-en="Stacks and splits">Stacks and splits</h3><div data-contents-skip="true"><div class="stack"><div id="iza3u9" data-lang-en="Panel A" class="pad-md">Panel A</div><div id="izvlxh" data-lang-en="Panel B" class="pad-md">Panel B</div></div><p id="ivj94y" data-lang-en=".stack (row on desktop, column on phones)" class="text-small text-muted">.stack (row on desktop, column on phones)</p></div><div data-contents-skip="true"><div class="split"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%233a6df0'/%3E%3Cstop offset='1' stop-color='%239b51e0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="" id="ikx0un"><div id="ifg3cx" data-lang-en="Text beside an image." class="pad-md">Text beside an image.</div></div><p id="i8g1bo" data-lang-en=".split" class="text-small text-muted">.split</p></div><div data-contents-skip="true"><div class="split-reverse"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='1' y2='0'%3E%3Cstop offset='0' stop-color='%23f2994a'/%3E%3Cstop offset='1' stop-color='%23eb5757'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="" id="i4qa1z"><div id="i9vg13" data-lang-en="The image swaps sides." class="pad-md">The image swaps sides.</div></div><p id="iyy8x4" data-lang-en=".split-reverse" class="text-small text-muted">.split-reverse</p></div><h3 id="iivdcc" data-lang-en="Width">Width</h3><div data-contents-skip="true"><div class="container-narrow"><div id="idlg7l" data-lang-en="A narrow, centered column for reading." class="pad-md">A narrow, centered column for reading.</div></div><p id="ixqykj" data-lang-en=".container-narrow" class="text-small text-muted">.container-narrow</p></div><div data-contents-skip="true"><div class="span-bleed"><div id="idhgwo" data-lang-en="Bleeds to the edges of the screen." class="pad-md">Bleeds to the edges of the screen.</div></div><p id="is025u" data-lang-en=".span-bleed" class="text-small text-muted">.span-bleed</p></div></section><section id="ii6bep"><h2 data-lang-en="6. Spacing">6. Spacing</h2><div class="grid-auto" id="isd4o9"><div data-contents-skip="true" class="card pad-md"><div id="iy1bup" data-lang-en="pad" class="pad-sm">pad</div><p id="ibudvt" data-lang-en=".pad-sm" class="text-small text-muted">.pad-sm</p></div><div data-contents-skip="true" class="card pad-md"><div id="issbbq" data-lang-en="pad" class="pad-md">pad</div><p id="izb5xk" data-lang-en=".pad-md" class="text-small text-muted">.pad-md</p></div><div data-contents-skip="true" class="card pad-md"><div id="ikudne" data-lang-en="pad" class="pad-lg">pad</div><p id="iu2dlx" data-lang-en=".pad-lg" class="text-small text-muted">.pad-lg</p></div><div data-contents-skip="true" class="card pad-md"><div class="gap-sm" id="iiw16q"><span data-lang-en="a" class="badge">a</span><span data-lang-en="b" class="badge">b</span></div><p id="i5pt6j" data-lang-en=".gap-sm" class="text-small text-muted">.gap-sm</p></div><div data-contents-skip="true" class="card pad-md"><div class="gap-lg" id="ia3lbc"><span data-lang-en="a" class="badge">a</span><span data-lang-en="b" class="badge">b</span></div><p id="ifot9w" data-lang-en=".gap-lg" class="text-small text-muted">.gap-lg</p></div><div data-contents-skip="true" class="card pad-md"><div><span data-lang-en="above" class="badge">above</span><div class="spacer-sm"></div><span data-lang-en="below" class="badge">below</span></div><p id="ii7g2i" data-lang-en=".spacer-sm" class="text-small text-muted">.spacer-sm</p></div></div></section><section id="iz4bz7"><h2 data-lang-en="7. Position and stickiness">7. Position and stickiness</h2><p id="i3uzqh" data-lang-en="Each box below scrolls on its own: scroll inside it to see where the marked element holds." class="text-muted">Each box below scrolls on its own: scroll inside it to see where the marked element holds.</p><div class="grid-auto" id="i6iyqj"><div data-contents-skip="true" class="card pad-md"><div data-box-mode="scroll" class="scroll-box" id="iq5psh"><div id="is43a6"><p data-lang-en="Scroll down.">Scroll down.</p><div data-lang-en="Holds at the top" class="sticky-top badge">Holds at the top</div><p id="ifrmyx" data-lang-en="End.">End.</p></div></div><p id="in2avh" data-lang-en=".sticky-top, Holds at: Top" class="text-small text-muted">.sticky-top, Holds at: Top</p></div><div data-contents-skip="true" class="card pad-md"><div data-box-mode="scroll" class="scroll-box" id="ih5vos"><div id="i1mx9g"><p data-lang-en="Scroll down.">Scroll down.</p><div data-stick-side="center" data-lang-en="Holds in the center" class="sticky-top badge">Holds in the center</div><p id="ieh1x4" data-lang-en="End.">End.</p></div></div><p id="ix30j2" data-lang-en=".sticky-top, Holds at: Center" class="text-small text-muted">.sticky-top, Holds at: Center</p></div><div data-contents-skip="true" class="card pad-md"><div data-box-mode="scroll" class="scroll-box" id="i7qn2u"><div id="imllfi"><p data-lang-en="Scroll down.">Scroll down.</p><div data-stick-side="bottom" data-lang-en="Holds at the bottom" class="sticky-top badge">Holds at the bottom</div></div></div><p id="iv4p7d" data-lang-en=".sticky-top, Holds at: Bottom" class="text-small text-muted">.sticky-top, Holds at: Bottom</p></div></div><h3 id="iplxwe" data-lang-en="Stacking">Stacking</h3><div data-contents-skip="true"><div class="relative" id="ie580v"><div id="icb5yr" data-lang-en="behind" class="z-behind pad-md">behind</div><div id="i3y018" data-lang-en="front" class="z-front pad-md">front</div><div id="iwiryl" data-lang-en="top" class="z-top pad-md">top</div></div><p id="ix20fz" data-lang-en=".z-behind, .z-front, .z-top" class="text-small text-muted">.z-behind, .z-front, .z-top</p></div></section><section id="iq9004"><h2 data-lang-en="8. Containment">8. Containment</h2><p id="iginix" data-lang-en="Keeping content inside its box." class="text-muted">Keeping content inside its box.</p><div class="grid-auto" id="iuipwl"><div data-contents-skip="true" class="card pad-md"><div class="aspect-video clip-content" id="isg9p6"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='1' y2='0'%3E%3Cstop offset='0' stop-color='%23f2994a'/%3E%3Cstop offset='1' stop-color='%23eb5757'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="" id="i8ntso" class="fill"></div><p id="i7xgcn" data-lang-en=".aspect-video + .fill + .clip-content" class="text-small text-muted">.aspect-video + .fill + .clip-content</p></div><div data-contents-skip="true" class="card pad-md"><div class="aspect-square clip-content" id="i3hghn"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%233a6df0'/%3E%3Cstop offset='1' stop-color='%239b51e0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="" id="i8ej75" class="fill"></div><p id="iv75xh" data-lang-en=".aspect-square + .fill" class="text-small text-muted">.aspect-square + .fill</p></div><div data-contents-skip="true" class="card pad-md"><p id="ib0rwl" data-lang-en="Text that runs on long enough to show how this element wraps, clips and breaks across several lines of a narrow column." class="clamp-2">Text that runs on long enough to show how this element wraps, clips and breaks across several lines of a narrow column.</p><p id="i3a1ka" data-lang-en=".clamp-2" class="text-small text-muted">.clamp-2</p></div><div data-contents-skip="true" class="card pad-md"><p id="izl8ph" data-lang-en="Text that runs on long enough to show how this element wraps, clips and breaks across several lines of a narrow column." class="clamp-1">Text that runs on long enough to show how this element wraps, clips and breaks across several lines of a narrow column.</p><p id="irnsdl" data-lang-en=".clamp-1" class="text-small text-muted">.clamp-1</p></div><div data-contents-skip="true" class="card pad-md"><p id="iu7x8a" data-lang-en="https://example.com/a/very/long/address/that/would/otherwise/overflow" class="break-all">https://example.com/a/very/long/address/that/would/otherwise/overflow</p><p id="iy5lme" data-lang-en=".break-all" class="text-small text-muted">.break-all</p></div><div data-contents-skip="true" class="card pad-md"><div class="contain-content" id="ium28c"><p id="ibvick" data-lang-en="Text that runs on long enough to show how this element wraps, clips and breaks across several lines of a narrow column.">Text that runs on long enough to show how this element wraps, clips and breaks across several lines of a narrow column.</p></div><p id="iq9i4t" data-lang-en=".contain-content" class="text-small text-muted">.contain-content</p></div></div></section><section id="iosmre"><h2 data-lang-en="9. Effects and filters">9. Effects and filters</h2><div class="grid-auto" id="i678qq"><div data-contents-skip="true" class="card pad-md"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%233a6df0'/%3E%3Cstop offset='1' stop-color='%239b51e0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="" id="i1h0r3" class="blur-custom"><p id="icl79u" data-lang-en=".blur-custom" class="text-small text-muted">.blur-custom</p></div><div data-contents-skip="true" class="card pad-md"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='1' y2='0'%3E%3Cstop offset='0' stop-color='%23f2994a'/%3E%3Cstop offset='1' stop-color='%23eb5757'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="" id="izbjpm" class="grayscale"><p id="i4tu21" data-lang-en=".grayscale" class="text-small text-muted">.grayscale</p></div><div data-contents-skip="true" class="card pad-md"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%233a6df0'/%3E%3Cstop offset='1' stop-color='%239b51e0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="" id="i3sjck" class="saturate"><p id="ittw24" data-lang-en=".saturate" class="text-small text-muted">.saturate</p></div><div data-contents-skip="true" class="card pad-md"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='1' y2='0'%3E%3Cstop offset='0' stop-color='%23f2994a'/%3E%3Cstop offset='1' stop-color='%23eb5757'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="" id="i5n86k" class="fx"><p id="ikxk1r" data-lang-en=".fx (combined filters)" class="text-small text-muted">.fx (combined filters)</p></div><div data-contents-skip="true" class="card pad-md"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%233a6df0'/%3E%3Cstop offset='1' stop-color='%239b51e0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="" id="iwurck" class="opacity-50"><p id="il8oan" data-lang-en=".opacity-50" class="text-small text-muted">.opacity-50</p></div><div data-contents-skip="true" class="card pad-md"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%233a6df0'/%3E%3Cstop offset='1' stop-color='%239b51e0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="" id="igx4s6" class="opacity-25"><p id="im9tce" data-lang-en=".opacity-25" class="text-small text-muted">.opacity-25</p></div></div><h3 id="iy85lk" data-lang-en="Scale">Scale</h3><div class="grid-auto" id="iq78n5"><div data-contents-skip="true" class="card pad-md"><div class="scale-75"><div id="ig5q3k" data-lang-en="75%" class="pad-md">75%</div></div><p id="i3l3o8" data-lang-en=".scale-75" class="text-small text-muted">.scale-75</p></div><div data-contents-skip="true" class="card pad-md"><div class="scale-90"><div id="ih5qah" data-lang-en="90%" class="pad-md">90%</div></div><p id="i1jv4j" data-lang-en=".scale-90" class="text-small text-muted">.scale-90</p></div><div data-contents-skip="true" class="card pad-md"><div class="scale-110"><div id="iqz5qr" data-lang-en="110%" class="pad-md">110%</div></div><p id="idkcdl" data-lang-en=".scale-110" class="text-small text-muted">.scale-110</p></div><div data-contents-skip="true" class="card pad-md"><div class="scale-125"><div id="iwvo9j" data-lang-en="125%" class="pad-md">125%</div></div><p id="iefoe4" data-lang-en=".scale-125" class="text-small text-muted">.scale-125</p></div></div></section><section id="i2673h"><h2 data-lang-en="10. Images">10. Images</h2><p id="ijbjyc" data-lang-en="Rendering, outlines that follow the image's shape, masks and image components." class="text-muted">Rendering, outlines that follow the image's shape, masks and image components.</p><h3 id="ixtusf" data-lang-en="Rendering">Rendering</h3><div class="grid-auto" id="i0n3pi"><div data-contents-skip="true" class="card pad-md"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAUklEQVR42o2OsQ3AIAzATNQTOIK5c3J9MzNzBD/QpUgpDK0nK06kwEPJOkrWsfoxB5eeAJjzcokRIDqA8IG07sm8bsG80ronAViXZtyu4ve/uQFLsSXpzyaAGgAAAABJRU5ErkJggg==" alt="" id="ipummk" class="img-render-smooth"><p id="ibafbi" data-lang-en=".img-render-smooth" class="text-small text-muted">.img-render-smooth</p></div><div data-contents-skip="true" class="card pad-md"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAUklEQVR42o2OsQ3AIAzATNQTOIK5c3J9MzNzBD/QpUgpDK0nK06kwEPJOkrWsfoxB5eeAJjzcokRIDqA8IG07sm8bsG80ronAViXZtyu4ve/uQFLsSXpzyaAGgAAAABJRU5ErkJggg==" alt="" id="isck4g" class="img-render-pixelated"><p id="i6s60n" data-lang-en=".img-render-pixelated (pixel-exact)" class="text-small text-muted">.img-render-pixelated (pixel-exact)</p></div><div data-contents-skip="true" class="card pad-md"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAUklEQVR42o2OsQ3AIAzATNQTOIK5c3J9MzNzBD/QpUgpDK0nK06kwEPJOkrWsfoxB5eeAJjzcokRIDqA8IG07sm8bsG80ronAViXZtyu4ve/uQFLsSXpzyaAGgAAAABJRU5ErkJggg==" alt="" id="iauv9d" class="img-render-crisp"><p id="iucohj" data-lang-en=".img-render-crisp" class="text-small text-muted">.img-render-crisp</p></div></div><h3 id="i436er" data-lang-en="Shape effects">Shape effects</h3><div class="grid-auto" id="itxl2h"><div data-contents-skip="true" class="card pad-md"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 5l13 30 32 3-24 21 7 32-28-17-28 17 7-32L5 38l32-3z' fill='%23f5b041'/%3E%3C/svg%3E" alt="" id="irv0mc" class="img-outline-thin"><p id="iejm0b" data-lang-en=".img-outline-thin" class="text-small text-muted">.img-outline-thin</p></div><div data-contents-skip="true" class="card pad-md"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 5l13 30 32 3-24 21 7 32-28-17-28 17 7-32L5 38l32-3z' fill='%23f5b041'/%3E%3C/svg%3E" alt="" id="ijlzob" class="img-outline-thick"><p id="invc4e" data-lang-en=".img-outline-thick" class="text-small text-muted">.img-outline-thick</p></div><div data-contents-skip="true" class="card pad-md"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 5l13 30 32 3-24 21 7 32-28-17-28 17 7-32L5 38l32-3z' fill='%23f5b041'/%3E%3C/svg%3E" alt="" id="izic6g" class="img-glow"><p id="ip8b4x" data-lang-en=".img-glow" class="text-small text-muted">.img-glow</p></div><div data-contents-skip="true" class="card pad-md"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 5l13 30 32 3-24 21 7 32-28-17-28 17 7-32L5 38l32-3z' fill='%23f5b041'/%3E%3C/svg%3E" alt="" id="iig20g" class="img-double-glow"><p id="iexaek" data-lang-en=".img-double-glow" class="text-small text-muted">.img-double-glow</p></div><div data-contents-skip="true" class="card pad-md"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 5l13 30 32 3-24 21 7 32-28-17-28 17 7-32L5 38l32-3z' fill='%23f5b041'/%3E%3C/svg%3E" alt="" id="i7p54k" class="img-shadow"><p id="i0hmbk" data-lang-en=".img-shadow" class="text-small text-muted">.img-shadow</p></div><div data-contents-skip="true" class="card pad-md"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 5l13 30 32 3-24 21 7 32-28-17-28 17 7-32L5 38l32-3z' fill='%23f5b041'/%3E%3C/svg%3E" alt="" id="ip92ga" class="img-outline-only"><p id="ir30yi" data-lang-en=".img-outline-only" class="text-small text-muted">.img-outline-only</p></div></div><h3 id="iuumic" data-lang-en="Masks">Masks</h3><div class="grid-auto" id="iw9og9"><div data-contents-skip="true" class="card pad-md"><div class="mask-circle bg-gradient-linear" id="ixgq6i"></div><p id="io7z0j" data-lang-en=".mask-circle" class="text-small text-muted">.mask-circle</p></div><div data-contents-skip="true" class="card pad-md"><div class="mask-hexagon bg-gradient-linear" id="i8fnwk"></div><p id="indtkl" data-lang-en=".mask-hexagon" class="text-small text-muted">.mask-hexagon</p></div><div data-contents-skip="true" class="card pad-md"><div class="mask-star bg-gradient-linear" id="igi8py"></div><p id="ig7lr1" data-lang-en=".mask-star" class="text-small text-muted">.mask-star</p></div><div data-contents-skip="true" class="card pad-md"><div class="mask-blob bg-gradient-linear" id="iaar3h"></div><p id="il0ypw" data-lang-en=".mask-blob" class="text-small text-muted">.mask-blob</p></div></div><h3 id="i4ohc6" data-lang-en="Image components">Image components</h3><div class="grid-auto" id="ibqsdg"><div data-contents-skip="true" class="card pad-md"><div data-image-cycle="" data-cycle-images="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%233a6df0'/%3E%3Cstop offset='1' stop-color='%239b51e0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E|data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='1' y2='0'%3E%3Cstop offset='0' stop-color='%23f2994a'/%3E%3Cstop offset='1' stop-color='%23eb5757'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" data-cycle-interval="3" class="image-cycle"></div><p id="i8z51k" data-lang-en="Image Cycle" class="text-small text-muted">Image Cycle</p></div><div data-contents-skip="true" class="card pad-md"><div data-src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 5l13 30 32 3-24 21 7 32-28-17-28 17 7-32L5 38l32-3z' fill='%23f5b041'/%3E%3C/svg%3E" data-fill="#ffffff" data-alpha="1" data-fit="contain" data-mode="solid" data-rim="3" class="img-silhouette" id="i3d5w6"></div><p id="itohpl" data-lang-en="Image Silhouette" class="text-small text-muted">Image Silhouette</p></div><div data-contents-skip="true" class="card pad-md"><div class="hover-zoom" id="ie9hav"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%233a6df0'/%3E%3Cstop offset='1' stop-color='%239b51e0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="" id="iidynk"></div><p id="iiuovk" data-lang-en=".hover-zoom" class="text-small text-muted">.hover-zoom</p></div></div></section><section id="sg-motion"><h2 data-lang-en="11. Motion: entrance">11. Motion: entrance</h2><p id="iwqdwv" data-lang-en="Plays once when the page opens. Replay in the toolbar plays them again." class="text-muted">Plays once when the page opens. Replay in the toolbar plays them again.</p><div class="grid-auto" id="io1ajh"><div data-contents-skip="true" class="card pad-md"><div data-lang-en="Fade in" class="anim-fade-in">Fade in</div><p id="iidpsf" data-lang-en=".anim-fade-in" class="text-small text-muted">.anim-fade-in</p></div><div data-contents-skip="true" class="card pad-md"><div data-lang-en="Slide up" class="anim-slide-up">Slide up</div><p id="ir6bru" data-lang-en=".anim-slide-up" class="text-small text-muted">.anim-slide-up</p></div><div data-contents-skip="true" class="card pad-md"><div data-lang-en="Slide down" class="anim-slide-down">Slide down</div><p id="icfp7i" data-lang-en=".anim-slide-down" class="text-small text-muted">.anim-slide-down</p></div><div data-contents-skip="true" class="card pad-md"><div data-lang-en="Slide left" class="anim-slide-left">Slide left</div><p id="i9rn7g" data-lang-en=".anim-slide-left" class="text-small text-muted">.anim-slide-left</p></div><div data-contents-skip="true" class="card pad-md"><div data-lang-en="Slide right" class="anim-slide-right">Slide right</div><p id="inzh5c" data-lang-en=".anim-slide-right" class="text-small text-muted">.anim-slide-right</p></div><div data-contents-skip="true" class="card pad-md"><div data-lang-en="Zoom in" class="anim-zoom-in">Zoom in</div><p id="i0n8wr" data-lang-en=".anim-zoom-in" class="text-small text-muted">.anim-zoom-in</p></div></div><h3 id="ikxvsj" data-lang-en="Stagger">Stagger</h3><div data-contents-skip="true"><div class="center-row"><span data-lang-en="1" class="badge anim-slide-up anim-delay-1">1</span><span data-lang-en="2" class="badge anim-slide-up anim-delay-2">2</span><span data-lang-en="3" class="badge anim-slide-up anim-delay-3">3</span><span data-lang-en="4" class="badge anim-slide-up anim-delay-4">4</span></div><p id="irhalt" data-lang-en=".anim-delay-1 to .anim-delay-4" class="text-small text-muted">.anim-delay-1 to .anim-delay-4</p></div></section><section id="id5v19"><h2 data-lang-en="12. Motion: loops">12. Motion: loops</h2><div class="grid-auto" id="ikacee"><div data-contents-skip="true" class="card pad-md"><span data-lang-en="Pulse" class="badge anim-pulse">Pulse</span><p id="i2uu68" data-lang-en=".anim-pulse" class="text-small text-muted">.anim-pulse</p></div><div data-contents-skip="true" class="card pad-md"><span id="ihfc5g" data-lang-en="Float" class="badge anim-float">Float</span><p id="ijj73z" data-lang-en=".anim-float" class="text-small text-muted">.anim-float</p></div><div data-contents-skip="true" class="card pad-md"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 5l13 30 32 3-24 21 7 32-28-17-28 17 7-32L5 38l32-3z' fill='%23f5b041'/%3E%3C/svg%3E" alt="" id="ig2tt2" class="anim-spin"><p id="iiw24j" data-lang-en=".anim-spin" class="text-small text-muted">.anim-spin</p></div></div></section><section id="i0qvsp"><h2 data-lang-en="13. Motion: hover">13. Motion: hover</h2><p id="ik82d2" data-lang-en="Point at each card. A hover stage keeps the pointer steady while its child moves." class="text-muted">Point at each card. A hover stage keeps the pointer steady while its child moves.</p><div class="grid-auto" id="if310x"><div data-contents-skip="true" class="card pad-md"><div data-lang-en="Grow" class="hover-grow">Grow</div><p id="i5h81x" data-lang-en=".hover-grow" class="text-small text-muted">.hover-grow</p></div><div data-contents-skip="true" class="card pad-md"><div data-lang-en="Lift" class="hover-lift">Lift</div><p id="il4cmf" data-lang-en=".hover-lift" class="text-small text-muted">.hover-lift</p></div><div data-contents-skip="true" class="card pad-md"><div data-lang-en="Fade" class="hover-fade">Fade</div><p id="ije2m9" data-lang-en=".hover-fade" class="text-small text-muted">.hover-fade</p></div><div data-contents-skip="true" class="card pad-md"><div data-lang-en="Glow" class="hover-glow">Glow</div><p id="i0ziud" data-lang-en=".hover-glow" class="text-small text-muted">.hover-glow</p></div><div data-contents-skip="true" class="card pad-md"><div data-lang-en="Tilt" class="hover-tilt">Tilt</div><p id="inon7h" data-lang-en=".hover-tilt" class="text-small text-muted">.hover-tilt</p></div><div data-contents-skip="true" class="card pad-md"><div data-lang-en="Shift" class="hover-shift">Shift</div><p id="if6c86" data-lang-en=".hover-shift" class="text-small text-muted">.hover-shift</p></div><div data-contents-skip="true" class="card pad-md"><div id="icibcd" data-lang-en="Comes in as the cursor nears" class="near-cursor">Comes in as the cursor nears</div><p id="iipc7q" data-lang-en=".near-cursor" class="text-small text-muted">.near-cursor</p></div></div><div data-contents-skip="true"><div class="hover-stage"><div data-lang-en="Lift and grow inside a stage." class="card pad-md hover-lift hover-grow">Lift and grow inside a stage.</div></div><p id="ix1jdg" data-lang-en=".hover-stage" class="text-small text-muted">.hover-stage</p></div></section><section id="i0ljab"><h2 data-lang-en="14. Motion: scroll reveal">14. Motion: scroll reveal</h2><p id="i3x471" data-lang-en="Hidden until scrolled into view (the reveal line is set per element)." class="text-muted">Hidden until scrolled into view (the reveal line is set per element).</p><div class="grid-auto" id="iqff2j"><div data-contents-skip="true" class="card pad-md"><div data-lang-en="Fades in" class="reveal-fade pad-md">Fades in</div><p id="ic0mj6" data-lang-en=".reveal-fade" class="text-small text-muted">.reveal-fade</p></div><div data-contents-skip="true" class="card pad-md"><div data-lang-en="Slides up" class="reveal-slide-up pad-md">Slides up</div><p id="itdw25" data-lang-en=".reveal-slide-up" class="text-small text-muted">.reveal-slide-up</p></div><div data-contents-skip="true" class="card pad-md"><div data-lang-en="From the right" class="reveal-slide-left pad-md">From the right</div><p id="iln3y5" data-lang-en=".reveal-slide-left" class="text-small text-muted">.reveal-slide-left</p></div><div data-contents-skip="true" class="card pad-md"><div data-lang-en="From the left" class="reveal-slide-right pad-md">From the left</div><p id="i40av7" data-lang-en=".reveal-slide-right" class="text-small text-muted">.reveal-slide-right</p></div><div data-contents-skip="true" class="card pad-md"><div data-lang-en="Zooms in" class="reveal-zoom pad-md">Zooms in</div><p id="i8y2zu" data-lang-en=".reveal-zoom" class="text-small text-muted">.reveal-zoom</p></div></div><h3 id="id6d1g" data-lang-en="Scroll-linked">Scroll-linked</h3><div class="grid-auto" id="i3461c"><div data-contents-skip="true" class="card pad-md"><div data-reveal-trigger="view" data-lang-en="Fades up with the scroll" class="auto-fade-up">Fades up with the scroll</div><p id="ihctap" data-lang-en=".auto-fade-up" class="text-small text-muted">.auto-fade-up</p></div><div data-contents-skip="true" class="card pad-md"><div data-reveal-trigger="view" data-lang-en="Fades down with the scroll" class="auto-fade-down">Fades down with the scroll</div><p id="ij4ze3" data-lang-en=".auto-fade-down" class="text-small text-muted">.auto-fade-down</p></div><div data-contents-skip="true" class="card pad-md"><div id="iej6pc"><p id="iopzxt" data-lang-en="Behind the glass">Behind the glass</p><div data-reveal-trigger="view" class="auto-blur" id="itx1wb"></div></div><p id="iisf0u" data-lang-en=".auto-blur (blurs what is behind it)" class="text-small text-muted">.auto-blur (blurs what is behind it)</p></div><div data-contents-skip="true" class="card pad-md"><div data-reveal-trigger="view" id="iao4ue" data-lang-en="Gains a shadow" class="auto-shadow pad-sm">Gains a shadow</div><p id="i1a2es" data-lang-en=".auto-shadow" class="text-small text-muted">.auto-shadow</p></div><div data-contents-skip="true" class="card pad-md"><div data-reveal-trigger="view" id="ib7cw6" data-lang-en="Gains a background" class="auto-bg pad-sm">Gains a background</div><p id="iz6dwl" data-lang-en=".auto-bg" class="text-small text-muted">.auto-bg</p></div></div><div data-contents-skip="true"><div data-scrub="1" data-scrub-json="[{&quot;at&quot;:0,&quot;opacity&quot;:0,&quot;y&quot;:40},{&quot;at&quot;:0.4,&quot;opacity&quot;:1,&quot;y&quot;:0},{&quot;at&quot;:0.85,&quot;opacity&quot;:1,&quot;y&quot;:0},{&quot;at&quot;:1,&quot;opacity&quot;:0,&quot;y&quot;:-40}]" class="scrub-standalone"><div id="igco0z" data-lang-en="Drifts and fades with its position on screen." class="pad-md">Drifts and fades with its position on screen.</div></div><p id="ikuzzc" data-lang-en="Scroll-Scrubbed Element" class="text-small text-muted">Scroll-Scrubbed Element</p></div></section><section id="iohdg2"><h2 data-lang-en="15. Ribbons and carousels">15. Ribbons and carousels</h2><div data-contents-skip="true"><div data-track-mode="marquee" data-track-speed="50" data-track-loop="true" data-track-hover-slow="100" data-track-hover-ease="200" class="scroll-track"><div class="track-viewport"><div class="track-inner"><div class="track-slide"><span data-lang-en="One" class="badge">One</span></div><div class="track-slide"><span data-lang-en="Two" class="badge">Two</span></div><div class="track-slide"><span data-lang-en="Three" class="badge">Three</span></div><div class="track-slide"><span data-lang-en="Four" class="badge">Four</span></div><div class="track-slide"><span data-lang-en="Five" class="badge">Five</span></div><div class="track-slide"><span data-lang-en="Six" class="badge">Six</span></div></div></div></div><p id="in9y8g" data-lang-en="Ribbon (marquee): slows on hover" class="text-small text-muted">Ribbon (marquee): slows on hover</p></div><div data-contents-skip="true"><div data-track-mode="marquee" data-track-speed="30" data-track-loop="true" data-track-direction="rtl" data-track-hover-slow="100" data-track-hover-ease="200" class="scroll-track"><div class="track-viewport"><div class="track-inner"><div class="track-slide"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%233a6df0'/%3E%3Cstop offset='1' stop-color='%239b51e0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="" id="iim08p"></div><div class="track-slide"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='1' y2='0'%3E%3Cstop offset='0' stop-color='%23f2994a'/%3E%3Cstop offset='1' stop-color='%23eb5757'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="" id="ixd7ug"></div><div class="track-slide"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%233a6df0'/%3E%3Cstop offset='1' stop-color='%239b51e0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="" id="idk7fl"></div><div class="track-slide"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='1' y2='0'%3E%3Cstop offset='0' stop-color='%23f2994a'/%3E%3Cstop offset='1' stop-color='%23eb5757'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="" id="iaz399"></div></div></div></div><p id="ijder5" data-lang-en="Ribbon of images, right to left" class="text-small text-muted">Ribbon of images, right to left</p></div><div data-contents-skip="true"><div data-track-mode="carousel" data-track-speed="60" data-track-loop="true" data-track-controls="both" data-track-captions="true" data-track-hover-slow="100" data-track-hover-ease="200" class="scroll-track"><div class="track-viewport"><div class="track-inner"><div data-caption="First slide" class="track-slide"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%233a6df0'/%3E%3Cstop offset='1' stop-color='%239b51e0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="" id="igvewp"></div><div data-caption="Second slide" class="track-slide"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='1' y2='0'%3E%3Cstop offset='0' stop-color='%23f2994a'/%3E%3Cstop offset='1' stop-color='%23eb5757'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="" id="iv6ayj"></div><div data-caption="Third slide" class="track-slide"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%233a6df0'/%3E%3Cstop offset='1' stop-color='%239b51e0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="" id="i4v4jo"></div></div></div></div><p id="iidy74" data-lang-en="Carousel with arrows, dots and captions" class="text-small text-muted">Carousel with arrows, dots and captions</p></div><div class="grid-auto" id="ihpis8"><div data-contents-skip="true" class="card pad-md"><div data-box-mode="scroll" class="scroll-box" id="ib7qmy"><p id="igzeul" data-lang-en="Text that runs on long enough to show how this element wraps, clips and breaks across several lines of a narrow column. Text that runs on long enough to show how this element wraps, clips and breaks across several lines of a narrow column. Text that runs on long enough to show how this element wraps, clips and breaks across several lines of a narrow column.">Text that runs on long enough to show how this element wraps, clips and breaks across several lines of a narrow column. Text that runs on long enough to show how this element wraps, clips and breaks across several lines of a narrow column. Text that runs on long enough to show how this element wraps, clips and breaks across several lines of a narrow column.</p></div><p id="ics0ml" data-lang-en="Scroll Container" class="text-small text-muted">Scroll Container</p></div><div data-contents-skip="true" class="card pad-md"><div data-box-mode="clip" class="scroll-box" id="iv64ld"><p id="i7xiq8" data-lang-en="Text that runs on long enough to show how this element wraps, clips and breaks across several lines of a narrow column. Text that runs on long enough to show how this element wraps, clips and breaks across several lines of a narrow column.">Text that runs on long enough to show how this element wraps, clips and breaks across several lines of a narrow column. Text that runs on long enough to show how this element wraps, clips and breaks across several lines of a narrow column.</p></div><p id="itf8pm" data-lang-en="Overflow Window" class="text-small text-muted">Overflow Window</p></div></div></section><section id="iiimbf"><h2 data-lang-en="16. Sticky sections">16. Sticky sections</h2><p id="isk0c7" data-lang-en="Containers that hold their stage on screen while the page scrolls past." class="text-muted">Containers that hold their stage on screen while the page scrolls past.</p><div data-contents-skip="true"><div class="sticky-range" id="ii8f2r"><div class="sticky-range-inner"><div id="ianir4" data-lang-en="Sticky Hold: stays fully visible for a while." class="pad-md">Sticky Hold: stays fully visible for a while.</div></div></div><p id="izsgft" data-lang-en="Sticky Hold, Holds at: Top" class="text-small text-muted">Sticky Hold, Holds at: Top</p></div><div data-contents-skip="true"><div data-stick-to="center" class="sticky-range" id="it7p6i"><div class="sticky-range-inner"><div id="imi2nf" data-lang-en="Holds in the middle of the screen." class="pad-md">Holds in the middle of the screen.</div></div></div><p id="i5gi8p" data-lang-en="Sticky Hold, Holds at: Center" class="text-small text-muted">Sticky Hold, Holds at: Center</p></div><div data-contents-skip="true"><div class="sticky-window" id="imwcjj"><div id="itngw2" data-lang-en="A window the page slides behind" class="sticky-window-stage">A window the page slides behind</div></div><p id="iw79il" data-lang-en="Sticky Window" class="text-small text-muted">Sticky Window</p></div><div data-contents-skip="true"><div class="sticky-scroll-sequence"><div class="sticky-scroll-step" id="ickag2"><div data-lang-en="Step one" class="sticky-scroll-stage card pad-md">Step one</div></div><div class="sticky-scroll-step" id="iqxy5f"><div data-lang-en="Step two lands lower" class="sticky-scroll-stage card pad-md">Step two lands lower</div></div><div class="sticky-scroll-step" id="iz6gxl"><div data-lang-en="Step three, lower still" class="sticky-scroll-stage card pad-md">Step three, lower still</div></div></div><p id="ix5gup" data-lang-en="Sticky Scroll Sequence" class="text-small text-muted">Sticky Scroll Sequence</p></div></section><section id="ikedaj"><h2 data-lang-en="17. Media">17. Media</h2><div class="grid-auto" id="iapx2e"><div data-contents-skip="true" class="card pad-md"><div data-src="" class="audio-player"><div class="audio-player-body"><div class="audio-player-info"><div data-lang-en="Track title" class="audio-player-title">Track title</div><div data-lang-en="Artist · Year" class="audio-player-meta">Artist · Year</div></div></div></div><p id="iu690l" data-lang-en="Audio Player" class="text-small text-muted">Audio Player</p></div><div data-contents-skip="true" class="card pad-md"><div data-src="" data-type="auto" data-ui="custom" data-poster="" data-autoplay="" data-loop="" data-muted="" class="video-player"></div><p id="ieytxk" data-lang-en="Video Player" class="text-small text-muted">Video Player</p></div></div><div data-contents-skip="true"><div class="viewport-window" id="ie3e2r"><div class="viewport-window-scene" id="iejg21"><div id="i0k0ql"></div></div></div><p id="ie9hw6" data-lang-en="Viewport Window: a fixed-size scene scaled to fit" class="text-small text-muted">Viewport Window: a fixed-size scene scaled to fit</p></div><div class="grid-auto" id="ind1ia"><div data-contents-skip="true" class="card pad-md"><div data-zoom-controls="on" class="zoom-box" id="i0686x"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%233a6df0'/%3E%3Cstop offset='1' stop-color='%239b51e0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="" id="i2xkqi"></div><p id="inlgiq" data-lang-en=".zoom-box: wheel, pinch or double-click zooms, drag pans" class="text-small text-muted">.zoom-box: wheel, pinch or double-click zooms, drag pans</p></div><div data-contents-skip="true" class="card pad-md"><div class="gallery-viewer grid-3 grid-no-collapse" id="ihs3zx"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%233a6df0'/%3E%3Cstop offset='1' stop-color='%239b51e0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="Cool gradient" id="i4e3jc"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='1' y2='0'%3E%3Cstop offset='0' stop-color='%23f2994a'/%3E%3Cstop offset='1' stop-color='%23eb5757'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='90' fill='url(%23g)'/%3E%3C/svg%3E" alt="Warm gradient" id="itv0in"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 5l13 30 32 3-24 21 7 32-28-17-28 17 7-32L5 38l32-3z' fill='%23f5b041'/%3E%3C/svg%3E" alt="Star" id="ix5fwm"><dialog id="sg-gallery" data-gallery-strip="on" class="subpage gallery-view"></dialog></div><p id="i13x7s" data-lang-en=".gallery-viewer: an image opens full size" class="text-small text-muted">.gallery-viewer: an image opens full size</p></div></div></section><section id="i38cjo"><h2 data-lang-en="18. Interaction">18. Interaction</h2><div data-contents-skip="true"><div class="accordion-item"><div class="accordion-header"><span data-lang-en="Expandable section">Expandable section</span><span data-lang-en="+" class="accordion-icon">+</span></div><div class="accordion-body"><div class="accordion-body-inner"><p data-lang-en="Content shown when opened.">Content shown when opened.</p></div></div></div><p id="i7z1f9" data-lang-en="Accordion" class="text-small text-muted">Accordion</p></div><h3 id="i3lj8s" data-lang-en="Subpages">Subpages</h3><div class="grid-auto" id="iajouo"><div data-contents-skip="true" class="card pad-md"><a href="#sg-subpage" data-lang-en="Open a subpage" class="btn btn-secondary">Open a subpage</a><dialog id="sg-subpage" class="subpage"><div class="subpage-bar"><span data-lang-en="Subpage" class="subpage-title">Subpage</span><button type="button" aria-label="Close" data-lang-en="×" class="subpage-close">×</button></div><div class="subpage-body"><p id="iazezk" data-lang-en="A window over the page. The page behind is blocked and stops scrolling until this closes (Esc, a click outside, or the close button).">A window over the page. The page behind is blocked and stops scrolling until this closes (Esc, a click outside, or the close button).</p></div></dialog><p id="ilykex" data-lang-en="Subpage: a window, page blocked" class="text-small text-muted">Subpage: a window, page blocked</p></div><div data-contents-skip="true" class="card pad-md"><a href="#sg-sheet" data-lang-en="Open a side sheet" class="btn btn-secondary">Open a side sheet</a><dialog id="sg-sheet" data-subpage-place="right" data-subpage-mode="float" class="subpage"><div class="subpage-bar"><span data-lang-en="Side sheet" class="subpage-title">Side sheet</span><button type="button" aria-label="Close" data-lang-en="×" class="subpage-close">×</button></div><div class="subpage-body"><p id="imv85l" data-lang-en="Slides in from the side while the page stays usable and scrollable.">Slides in from the side while the page stays usable and scrollable.</p></div></dialog><p id="izfboj" data-lang-en="Subpage: a side sheet, page usable" class="text-small text-muted">Subpage: a side sheet, page usable</p></div></div><div data-contents-skip="true"><div class="floating-panel-group"><span href="#" data-lang-en="Open panel" class="floating-panel-trigger btn btn-secondary">Open panel</span><div data-floating-panel="" class="floating-panel"><div class="floating-panel-bar"><span data-lang-en="Panel">Panel</span><button type="button" aria-label="Close" data-lang-en="×" class="floating-panel-close">×</button></div><div class="floating-panel-body"><p id="ikrw9e" data-lang-en="A popover panel.">A popover panel.</p></div></div></div><p id="i0p44o" data-lang-en="Floating Panel" class="text-small text-muted">Floating Panel</p></div><h3 id="ii4p2r" data-lang-en="Tooltips">Tooltips</h3><div class="grid-auto" id="inua73"><div data-contents-skip="true" class="card pad-md"><span data-tooltip-text="Shown above (the default)" data-lang-en="Hover me" class="badge">Hover me</span><p id="i7w37x" data-lang-en="Tooltip, top" class="text-small text-muted">Tooltip, top</p></div><div data-contents-skip="true" class="card pad-md"><span data-tooltip-text="Shown below" data-tooltip-pos="bottom" data-lang-en="Hover me" class="badge">Hover me</span><p id="io7fjr" data-lang-en="Tooltip, bottom" class="text-small text-muted">Tooltip, bottom</p></div><div data-contents-skip="true" class="card pad-md"><span data-tooltip-text="Shown to the left" data-tooltip-pos="left" data-lang-en="Hover me" class="badge">Hover me</span><p id="iahxbi" data-lang-en="Tooltip, left" class="text-small text-muted">Tooltip, left</p></div><div data-contents-skip="true" class="card pad-md"><span data-tooltip-text="Shown to the right" data-tooltip-pos="right" data-lang-en="Hover me" class="badge">Hover me</span><p id="iv3f96" data-lang-en="Tooltip, right" class="text-small text-muted">Tooltip, right</p></div><div data-contents-skip="true" class="card pad-md"><span data-tooltip-text="Tooltips take **bold**, *italic* and [links](https://example.com). Click to pin this one." data-tooltip-pin="true" data-lang-en="Click to pin" class="badge">Click to pin</span><p id="i601m3" data-lang-en="Tooltip, formatted and pinnable" class="text-small text-muted">Tooltip, formatted and pinnable</p></div></div><h3 id="i5zzmc4" data-lang-en="Copy and share">Copy and share</h3><div class="grid-auto" id="ijwhku5"><div data-contents-skip="true" class="card pad-md"><pre class="copy-content" id="irelww1"><code data-lang-en="copy this">copy this</code></pre><p id="isaqloo" data-lang-en=".copy-content" class="text-small text-muted">.copy-content</p></div><div data-contents-skip="true" class="card pad-md"><h4 id="izp39aw" data-lang-en="Linkable heading" class="anchor-copy">Linkable heading</h4><p id="i6mfwnu" data-lang-en=".anchor-copy" class="text-small text-muted">.anchor-copy</p></div><div data-contents-skip="true" class="card pad-md"><div id="i3h96uj" data-lang-en="Share this block" class="share-button pad-md">Share this block</div><p id="idygssg" data-lang-en=".share-button on a block" class="text-small text-muted">.share-button on a block</p></div></div></section><section id="ilxygnj"><h2 data-lang-en="19. Navigation">19. Navigation</h2><p id="iu1l0p5" data-lang-en="In-page links jump to their target; the Contents beside this guide is one of these." class="text-muted">In-page links jump to their target; the Contents beside this guide is one of these.</p><div class="grid-auto" id="i8ta8aj"><div data-contents-skip="true" class="card pad-md"><nav class="scrollspy" id="ivt71n7"><a href="#sg-text" data-lang-en="Text">Text</a><a href="#sg-layout" data-lang-en="Layout">Layout</a><a href="#sg-motion" data-lang-en="Motion">Motion</a></nav><p id="iforvmf" data-lang-en=".scrollspy (marks the section on screen)" class="text-small text-muted">.scrollspy (marks the section on screen)</p></div><div data-contents-skip="true" class="card pad-md"><nav class="breadcrumb"><a href="#" data-lang-en="Home">Home</a> / <a href="#" data-lang-en="Section">Section</a> / <span data-lang-en="Page">Page</span></nav><p id="ir63yln" data-lang-en=".breadcrumb" class="text-small text-muted">.breadcrumb</p></div><div data-contents-skip="true" class="card pad-md"><a href="#sg-layout" data-lang-en="To 5. Layout" class="btn btn-secondary">To 5. Layout</a><p id="ixs2bpy" data-lang-en="Link to a section (outline on arrival)" class="text-small text-muted">Link to a section (outline on arrival)</p></div><div data-contents-skip="true" class="card pad-md"><a href="#sg-motion" data-jump-highlight="fill" data-jump-align="center" data-lang-en="To 11. Motion, centered" class="btn btn-secondary">To 11. Motion, centered</a><p id="issl3hf" data-lang-en="Lands centered, fill highlight" class="text-small text-muted">Lands centered, fill highlight</p></div><div data-contents-skip="true" class="card pad-md"><a href="#sg-text" data-jump-highlight="none" data-jump-scroll="instant" data-lang-en="To 1. Text, instantly" class="btn btn-secondary">To 1. Text, instantly</a><p id="iwcyoyj" data-lang-en="Instant jump, no highlight" class="text-small text-muted">Instant jump, no highlight</p></div><div data-contents-skip="true" class="card pad-md"><div data-link-href="#sg-layout" id="ic8ohdt" data-lang-en="Any element can jump: this box links to 5. Layout." class="pad-sm">Any element can jump: this box links to 5. Layout.</div><p id="i8x4879" data-lang-en="Link to on a box" class="text-small text-muted">Link to on a box</p></div><div data-contents-skip="true" class="card pad-md"><a href="#sg-nowhere" data-lang-en="To a missing target" class="btn btn-ghost">To a missing target</a><p id="ira0gb8" data-lang-en="Broken jump: stays put" class="text-small text-muted">Broken jump: stays put</p></div></div></section><section id="i340boa"><h2 data-lang-en="20. Language and theme">20. Language and theme</h2><div class="grid-auto" id="ipnrfby"><div data-contents-skip="true" class="card pad-md"><div data-site-lang-switch="" data-lang-display="tag" class="lang-switch"><button type="button" aria-haspopup="listbox" aria-expanded="false" data-lang-en="" class="lang-switch-button"></button><ul role="listbox" hidden="" class="lang-switch-menu"></ul></div><p id="im7ztdb" data-lang-en="Language Switcher (tags)" class="text-small text-muted">Language Switcher (tags)</p></div><div data-contents-skip="true" class="card pad-md"><div data-site-lang-switch="" data-lang-display="name" class="lang-switch"><button type="button" aria-haspopup="listbox" aria-expanded="false" data-lang-en="" class="lang-switch-button"></button><ul role="listbox" hidden="" class="lang-switch-menu"></ul></div><p id="inast3j" data-lang-en="Language Switcher (names)" class="text-small text-muted">Language Switcher (names)</p></div><div data-contents-skip="true" class="card pad-md"><select data-site-lang-select="" aria-label="Language" class="site-lang-select lang-select-styled"></select><p id="ilil7iz" data-lang-en=".lang-select-styled" class="text-small text-muted">.lang-select-styled</p></div><div data-contents-skip="true" class="card pad-md"><button href="#" type="button" data-lang-en="Toggle theme" class="btn btn-secondary">Toggle theme</button><p id="idfkge1" data-lang-en="Theme Toggle Button" class="text-small text-muted">Theme Toggle Button</p></div></div></section><section id="i7diqwo"><h2 data-lang-en="21. Content blocks">21. Content blocks</h2><div data-contents-skip="true"><div data-md="# Markdown block ^md-top
+
+Text with **bold**, *italic*, __strong__, _emphasis_ and `inline code`.
+
+## Jumps ^md-jumps
+
+- [To the anchored note](#md-note): inside this block. Hover for a preview of the target.
+- [To the lists](#md-lists): to an anchored heading in this block.
+- [To section 1, Text](#sg-text): to another part of the page.
+- [To nowhere](#md-missing): a broken jump; the target does not exist, so it stays put.
+- [An external link](https://example.com) opens a new tab; [email](mailto:someone@example.com) opens the mail app.
+
+## Notes ^md-notes
+
+Hover a [footnote]^(A footnote holds **formatted** text, `code` and [links](https://example.com).) to read it; click it to pin it open.
+A second [footnote]^(Several notes can sit in one paragraph.) in the same line.
+
+And this is [the anchored note]^(md-note): the first jump above lands here.
+
+## Lists ^md-lists
+
+- An unordered item
+- Another item
+
+1. An ordered item
+2. A second step
+
+&gt; A quote, set apart from the text.
+
+```js
+console.log(&quot;a code block&quot;);
+```
+
+![A pixel heart](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAUklEQVR42o2OsQ3AIAzATNQTOIK5c3J9MzNzBD/QpUgpDK0nK06kwEPJOkrWsfoxB5eeAJjzcokRIDqA8IG07sm8bsG80ronAViXZtyu4ve/uQFLsSXpzyaAGgAAAABJRU5ErkJggg==)
+
+---
+
+[Back to the top of this block](#md-top)" class="md-block"></div><p id="izdijd1" data-lang-en="Markdown Block: jumps, footnotes and anchors" class="text-small text-muted">Markdown Block: jumps, footnotes and anchors</p></div><div data-contents-skip="true"><div id="iqqrmcc"><div><div data-lang-en="12" class="stat-number">12</div><div data-lang-en="Projects" class="stat-label">Projects</div></div><div><div data-lang-en="340" class="stat-number">340</div><div data-lang-en="Visitors a day" class="stat-label">Visitors a day</div></div><div><div data-lang-en="8" class="stat-number">8</div><div data-lang-en="Years running" class="stat-label">Years running</div></div></div><p id="iva0llw" data-lang-en="Stats Row" class="text-small text-muted">Stats Row</p></div><div data-contents-skip="true"><div class="free-canvas"><h2 id="ikap0he" data-lang-en="Anywhere">Anywhere</h2><span id="io3wghl" data-lang-en="Placed freely" class="badge">Placed freely</span></div><p id="imnx6nh" data-lang-en="Free Placement" class="text-small text-muted">Free Placement</p></div><div data-contents-skip="true"><footer class="site-footer"><nav class="site-footer-links"><a href="/" data-lang-en="Home">Home</a><a href="#" data-lang-en="About">About</a><a href="#" data-lang-en="Contact">Contact</a></nav><p data-lang-en="© 2026 Your name">© 2026 Your name</p></footer><p id="ii488o3" data-lang-en="Footer" class="text-small text-muted">Footer</p></div></section></div></div></main></body></html>

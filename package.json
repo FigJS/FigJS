@@ -1,0 +1,14 @@
+{
+  "name": "figjs",
+  "version": "1.1.2",
+  "private": true,
+  "description": "FigJS: a local visual editor for static websites, and the site it builds.",
+  "license": "MIT",
+  "scripts": {
+    "start": "node editor/server/start.js",
+    "preview": "node editor/server/start.js --preview-only"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

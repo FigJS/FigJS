@@ -1,0 +1,20 @@
+.inapp-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  zoom: calc(1 / var(--site-scale, 1));
+  background: var(--notice-bg, var(--bg, #111));
+  color: var(--notice-fg, var(--fg, #fff));
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  text-align: left;
+}
+@media (max-width: 640px) {
+  .inapp-gate { zoom: calc(1 / var(--site-scale-phone, 0.75)); }
+}
+html.inapp-blocked, html.inapp-blocked body { overflow: hidden; }
+.inapp-card { width: min(100%, 420px); }
+.inapp-title { margin: 0 0 8px; font-size: 20px; font-weight: 600; }

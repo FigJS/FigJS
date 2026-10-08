@@ -1,0 +1,13 @@
+:where(a[href], area[href]) { cursor: var(--cursor-pointer, pointer); }
+
+:where(:is(input:not([type]), input[type="text"], input[type="search"], input[type="email"], input[type="url"],
+  input[type="tel"], input[type="password"], input[type="number"], textarea):not(:disabled),
+  [contenteditable]:not([contenteditable="false"])) { cursor: var(--cursor-text, text); }
+
+[data-cursor-live="text"] { cursor: var(--cursor-text, text) !important; }
+[data-cursor-live="pressed"] { cursor: var(--cursor-pressed, var(--cursor-pointer, pointer)) !important; }
+
+[data-cursor-preset="crosshair"] { cursor: var(--cursor-crosshair, crosshair); }
+[data-cursor-preset="dot"],
+[data-cursor-preset="ring"] { cursor: var(--cursor-pointer, pointer); }
+[data-cursor-preset="none"] { cursor: none; }

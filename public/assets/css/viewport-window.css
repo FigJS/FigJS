@@ -1,0 +1,39 @@
+.viewport-window {
+  --vpw-width:    320px;
+  --vpw-height:   220px;
+  --vpw-radius:   8px;
+
+  --vpw-anchor-x: 50%;
+  --vpw-anchor-y: 50%;
+
+  position: relative;
+  width:  var(--vpw-width);
+  height: var(--vpw-height);
+  border-radius: var(--vpw-radius);
+  isolation: isolate;
+
+  clip-path: inset(0 round var(--vpw-radius));
+}
+
+.viewport-window > .viewport-window-scene {
+  position: fixed;
+  top:  var(--vpw-anchor-y, 50%);
+  left: var(--vpw-anchor-x, 50%);
+  transform: translate(-50%, -50%);
+  min-width: 1px;
+  min-height: 1px;
+}
+
+.in-editor .viewport-window > .viewport-window-scene:empty::after {
+  content: "Drop scene content here";
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 180px;
+  height: 120px;
+  color: #555;
+  font-size: 12px;
+  border: 1px dashed #333;
+  border-radius: 4px;
+  pointer-events: none;
+}
